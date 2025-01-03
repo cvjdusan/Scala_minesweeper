@@ -1,5 +1,5 @@
 import scalafx.scene.control._
-import scalafx.scene.layout.{GridPane, VBox}
+import scalafx.scene.layout.{Background, GridPane, VBox}
 
 
 class GameView(controller: GameController, gridSize: Int) {
@@ -26,13 +26,22 @@ class GameView(controller: GameController, gridSize: Int) {
       buttonGrid(row)(col) = button
       gridPane.add(button, col, row)
     }
+
     gridPane
   }
 
   def handleCellClick(row: Int, col: Int): Unit = {
-    buttonGrid(row)(col).text = "O"
-    buttonGrid(row)(col).disable = true
 
+    val isMine = controller.openCell(row, col)
+
+    if(isMine) {
+      buttonGrid(row)(col).style = "-fx-background-color: red; -fx-border-color: red; -fx-border-width: 2;"
+    } else {
+      buttonGrid(row)(col).text = controller.getMineCount(row, col) + ""
+      buttonGrid(row)(col).style = "-fx-background-color: lightblue; -fx-border-color: darkblue; -fx-border-width: 2;"
+    }
+
+    buttonGrid(row)(col).disable = true
     buttonGrid(row)(col).scene().getRoot.requestFocus()
   }
 
