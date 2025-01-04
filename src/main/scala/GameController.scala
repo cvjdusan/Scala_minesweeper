@@ -34,52 +34,26 @@ class GameController(gridSize: Int, numMines: Int) {
   }
 
   private def countAdjacentMines(i: Int, j: Int): Int = {
-    var cnt = 0
+    val cellsToCheck = Seq(
+      (i-1, j-1), (i-1, j), (i-1, j+1),
+      (i, j-1), (i, j+1),
+      (i+1, j-1), (i+1, j), (i+1, j+1)
+    )
 
-    if(i - 1 >= 0) {
-      if(j - 1 >= 0) {
-        if(openCell(i-1, j-1)) cnt = cnt + 1
-      }
-      if(openCell(i-1, j)) cnt = cnt.+(1)
-      if(j + 1 < gridSize) {
-        if(openCell(i-1, j+1)) cnt = cnt + 1
-      }
-    }
-
-    if(j - 1 >= 0) {
-      if(openCell(i, j-1)) cnt = cnt + 1
-    }
-
-    if(j + 1 < gridSize) {
-      if(openCell(i, j+1)) cnt = cnt + 1
-    }
-
-
-    if(i + 1 < gridSize) {
-      if(j - 1 >= 0) {
-        if(openCell(i+1, j-1)) cnt = cnt + 1
-      }
-      if(openCell(i+1, j)) cnt = cnt.+(1)
-      if(j + 1 < gridSize) {
-        if(openCell(i+1, j+1)) cnt = cnt + 1
-      }
-    }
-
-
-    cnt
+    cellsToCheck
+      .filter{ case(ii, jj) => ii >= 0 && ii < gridSize && jj >= 0 && jj < gridSize}
+      .count { case(ii, jj) => checkIsMine(ii, jj)}
   }
 
-  def openCell(row: Int, col: Int) : Boolean = {
-    val cell = grid(row)(col)
-
-    cell.isMine
+  def checkIsMine(row: Int, col: Int) : Boolean = {
+    grid(row)(col).isMine
   }
 
   def getMineCount(row: Int, col: Int) : Int = {
-    val cell = grid(row)(col)
-
-    cell.adjacentMines
+    grid(row)(col).adjacentMines
   }
+
+
 
 
 }

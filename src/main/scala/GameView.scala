@@ -32,7 +32,7 @@ class GameView(controller: GameController, gridSize: Int) {
 
   def handleCellClick(row: Int, col: Int): Unit = {
 
-    val isMine = controller.openCell(row, col)
+    val isMine = controller.checkIsMine(row, col)
 
     if(isMine) {
       buttonGrid(row)(col).style = "-fx-background-color: red; -fx-border-color: red; -fx-border-width: 2;"
@@ -43,6 +43,14 @@ class GameView(controller: GameController, gridSize: Int) {
 
     buttonGrid(row)(col).disable = true
     buttonGrid(row)(col).scene().getRoot.requestFocus()
+  }
+
+  def resetGrid(): Unit = {
+    buttonGrid.foreach(_.foreach { button =>
+      button.text = ""
+      button.disable = false
+      button.style = ""
+    })
   }
 
 }
