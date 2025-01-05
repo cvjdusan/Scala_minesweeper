@@ -2,18 +2,20 @@ import scalafx.scene.control._
 import scalafx.scene.layout.{Background, GridPane, VBox}
 
 
-class GameView(controller: GameController, gridSize: Int) {
+class GameView(controller: GameController) {
 
-  private val buttonGrid: Array[Array[Button]] = Array.ofDim[Button](gridSize, gridSize)
+  private var buttonGrid: Array[Array[Button]] = Array.ofDim[Button](0, 0)
 
-  def createGrid(): GridPane = {
+  def createGrid(rows: Int, columns: Int): GridPane = {
+
+    buttonGrid = Array.ofDim[Button](rows, columns)
 
     val gridPane = new GridPane {
       hgap = 5
       vgap = 5
     }
 
-    for (row <- 0 until gridSize; col <- 0 until gridSize) {
+    for (row <- 0 until rows; col <- 0 until columns) {
 
       val button = new Button {
         prefWidth = 40
