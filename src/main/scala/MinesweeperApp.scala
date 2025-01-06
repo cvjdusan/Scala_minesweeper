@@ -96,21 +96,50 @@ object MinesweeperApp extends JFXApp3 {
     val selectedDifficulty = difficultyComboBox.value.value
     val selectedLevel = levelsListView.selectionModel().getSelectedItem
 
-    if (selectedDifficulty != null && selectedLevel != null) {
-      if (selectedLevel == "Random") {
-        println(s"Starting a new game with difficulty: $selectedDifficulty and random level.")
-      } else {
-        println(s"Starting a new game with difficulty: $selectedDifficulty and level: $selectedLevel.")
-      }
-      controller.initializeGame(10, 10)
-      val gridPane = view.createGrid(10, 10)
-      mainLayout.center = gridPane
-    } else {
+    if (selectedDifficulty == null || selectedLevel == null) {
       new Alert(AlertType.Warning) {
         title = "Warning"
         headerText = "Invalid Selection"
         contentText = "Please select both a difficulty and a level!"
       }.showAndWait()
+      return
+    }
+
+    var gridData: Array[String] = Array.empty[String]
+
+    selectedDifficulty match {
+      case "Beginner" =>
+        val filePath = "C:\\Users\\cvdus\\Downloads\\easy_level_1.txt"
+        val file = getFile(filePath)
+        gridData = readDataFromFile(file.get)
+
+      case "Normal" =>
+        val filePath = "C:\\Users\\cvdus\\Downloads\\normal_level_1.txt"
+        val file = getFile(filePath)
+        gridData = readDataFromFile(file.get)
+
+      case "Advanced" =>
+        val filePath = "C:\\Users\\cvdus\\Downloads\\advanced_level_1.txt"
+        val file = getFile(filePath)
+        gridData = readDataFromFile(file.get)
+
+      case _ =>
+        println(s"Unknown difficulty: $selectedDifficulty")
+        return
+    }
+
+
+    startGame(controller, view, mainLayout, gridData)
+  }
+
+
+  def getFile(filePath: String): Option[File] = {
+    val file = new File(filePath)
+    if (file.exists() && file.isFile) {
+      Some(file)
+    } else {
+      println(s"File not found or not valid: $filePath")
+      None
     }
   }
 
@@ -135,9 +164,12 @@ object MinesweeperApp extends JFXApp3 {
       title = "Load Game"
       extensionFilters.add(new FileChooser.ExtensionFilter("Game Files", "*.txt"))
     }
-
     val file: File = fileChooser.showOpenDialog(stage)
+    val gridData = readDataFromFile(file)
+    startGame(controller, view, mainLayout, gridData)
+  }
 
+  private def readDataFromFile(file: File) : Array[String]  = {
     if (file != null) {
       val reader = new BufferedReader(new FileReader(file))
       val gridData = reader.lines().toArray.map(_.toString)
@@ -146,10 +178,15 @@ object MinesweeperApp extends JFXApp3 {
       println("Loaded grid:")
       gridData.foreach(println)
 
-      controller.loadGame(gridData)
-      val gridPane = view.createGrid(gridData.length, gridData(0).length)
-      mainLayout.center = gridPane
+      return gridData
     }
+    null
+  }
+
+  private def startGame(controller: GameController, view: GameView, mainLayout: BorderPane, gridData: Array[String]): Unit = {
+    controller.loadGame(gridData)
+    val gridPane = view.createGrid(gridData.length, gridData(0).length)
+    mainLayout.center = gridPane
   }
 
   private def createLevel(): Unit = {
