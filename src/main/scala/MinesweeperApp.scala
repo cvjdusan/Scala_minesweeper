@@ -11,6 +11,8 @@ import scalafx.scene.control._
 
 object MinesweeperApp extends JFXApp3 {
 
+  val bestResults = scala.collection.mutable.ListBuffer[(String, Int)]()
+
   override def start(): Unit = {
     val difficulty = Seq("Beginner", "Normal", "Advanced")
 
@@ -19,6 +21,7 @@ object MinesweeperApp extends JFXApp3 {
       "Normal" -> Seq("Level 1", "Level 2", "Random"),
       "Advanced" -> Seq("Level 1", "Level 2", "Random")
     )
+
 
     val difficultyComboBox = new ComboBox[String] {
       promptText = "Choose difficulty"
@@ -48,10 +51,15 @@ object MinesweeperApp extends JFXApp3 {
     val controller = new GameController()
 
     val showGameOverMessage: () => Unit = () => {
+      val score = controller.endGameSuccessfully()
+      score.foreach { s =>
+        val playerName = "Player 1"
+        updateResults(playerName, s)
+      }
       new Alert(AlertType.Information) {
         title = "Game Over"
-        headerText = "You clicked on a mine!"
-        contentText = "Better luck next time!"
+        headerText =  "💣 BOOM 💣 Game over!"
+        contentText = score.map(s => s"Your score: $s").getOrElse("No score recorded.")
       }.showAndWait()
     }
 
@@ -194,6 +202,7 @@ object MinesweeperApp extends JFXApp3 {
 
   private def startGame(controller: GameController, view: GameView, mainLayout: BorderPane, gridData: Array[String]): Unit = {
     controller.loadGame(gridData)
+    controller.startGameTime()
     val gridPane = view.createGrid(gridData.length, gridData(0).length)
     mainLayout.center = gridPane
   }
@@ -203,6 +212,23 @@ object MinesweeperApp extends JFXApp3 {
   }
 
   private def showResults(): Unit = {
-    println("Show results functionality is not implemented yet.")
+    val resultsText = if (bestResults.isEmpty) {
+      "No results available yet."
+    } else {
+      bestResults.zipWithIndex.map { case ((name, score), idx) =>
+        s"${idx + 1}. $name: $score"
+      }.mkString("\n")
+    }
+
+    new Alert(AlertType.Information) {
+      title = "Best Results"
+      headerText = "Top Scores"
+      contentText = resultsText
+    }.showAndWait()
+  }
+
+  def updateResults(playerName: String, score: Int): Unit = {
+    bestResults += ((playerName, score))
+    bestResults.sortBy(-_._2)
   }
 }

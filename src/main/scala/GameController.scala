@@ -1,9 +1,12 @@
+import java.time.Instant
 import scala.annotation.tailrec
 
 class GameController() {
 
   private var grid: Array[Array[GameCell]] = Array.ofDim[GameCell](0, 0)
-
+  private var startTime: Instant = _
+  private var clickCount: Int = 0
+  private var levelCompleted: Boolean = false
 
 
   private val EMPTY_SPACE = '-'
@@ -13,6 +16,28 @@ class GameController() {
     grid = Array.ofDim[GameCell](rows, columns)
     for (row <- 0 until rows; col <- 0 until columns) {
       grid(row)(col) = GameCell(isMine = false)
+    }
+    clickCount = 0
+    levelCompleted = false
+  }
+
+  def startGameTime(): Unit = {
+    startTime = Instant.now()
+  }
+
+  def incrementClickCount(): Unit = {
+    clickCount += 1
+  }
+
+  def getClickCount: Int = clickCount
+
+  def endGameSuccessfully(): Option[Int] = {
+    if (!levelCompleted) {
+      levelCompleted = true
+      val duration = java.time.Duration.between(startTime, Instant.now()).toSeconds
+      Some((duration * 10 + clickCount * 5).toInt)
+    } else {
+      None
     }
   }
 

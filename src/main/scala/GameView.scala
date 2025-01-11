@@ -1,5 +1,7 @@
 import scalafx.scene.control._
-import scalafx.scene.layout.{Background, GridPane, VBox}
+import javafx.scene.input.MouseButton
+import scalafx.scene.layout.GridPane
+
 
 class GameView(controller: GameController, onGameOver: () => Unit) {
 
@@ -20,8 +22,7 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
         prefWidth = 40
         prefHeight = 40
         text = ""
-        disable = false
-        onAction = _ => handleCellClick(row, col)
+        onMousePressed  = event => handleCellClick(row, col, event.getButton)
       }
 
       buttonGrid(row)(col) = button
@@ -31,24 +32,40 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
     gridPane
   }
 
-  def handleCellClick(row: Int, col: Int): Unit = {
 
-    val isMine = controller.checkIsMine(row, col)
+  private def handleCellClick(row: Int, col: Int, button: MouseButton): Unit = {
 
-    if(isMine) {
-      controller.revealAllMines()
-      updateView(controller.getGrid(), isGameOver = true)
-      onGameOver()
-      // reveal all
-    } else {
-      // reveal cell and neighbours without mines
-      controller.revealCell(row, col)
-      updateView(controller.getGrid(), isGameOver = false)
+    val cell = controller.getCell(row, col)
+
+    button match {
+      case MouseButton.PRIMARY =>
+        controller.incrementClickCount()
+        if(cell.isMine) {
+          // reveal all
+          controller.revealAllMines()
+          updateView(controller.getGrid(), isGameOver = true)
+          onGameOver()
+        } else {
+          // reveal cell and neighbours without mines
+          controller.revealCell(row, col)
+          updateView(controller.getGrid(), isGameOver = false)
+        }
+
+
+      case MouseButton.SECONDARY =>
+        val currentButton = buttonGrid(row)(col)
+        if (!cell.isRevealed) {
+          if (Option(currentButton.text.value).getOrElse("") == "🚩") {
+            currentButton.text = ""
+          } else {
+            currentButton.text = "🚩"
+          }
+        }
+
+      case _ =>
     }
 
 
-
-    buttonGrid(row)(col).disable = true
     buttonGrid(row)(col).scene().getRoot.requestFocus()
   }
 
