@@ -1,14 +1,18 @@
+import scala.annotation.tailrec
+
 class GameController() {
 
-  private var grid: Array[Array[Cell]] = Array.ofDim[Cell](0, 0)
+  private var grid: Array[Array[GameCell]] = Array.ofDim[GameCell](0, 0)
+
+
 
   private val EMPTY_SPACE = '-'
   private val MINE_SPACE = '#'
 
   def initGrid(rows: Int, columns: Int) : Unit = {
-    grid = Array.ofDim[Cell](rows, columns)
+    grid = Array.ofDim[GameCell](rows, columns)
     for (row <- 0 until rows; col <- 0 until columns) {
-      grid(row)(col) = Cell(isMine = false)
+      grid(row)(col) = GameCell(isMine = false)
     }
   }
 
@@ -56,6 +60,14 @@ class GameController() {
     grid(row)(col).isMine
   }
 
+  def getCell(row: Int, col: Int) : GameCell = {
+    grid(row)(col)
+  }
+
+  def getGrid() : Array[Array[GameCell]] = {
+    grid
+  }
+
   def getMineCount(row: Int, col: Int) : Int = {
     grid(row)(col).adjacentMines
   }
@@ -75,5 +87,37 @@ class GameController() {
     calculateAdjacentMines(gridDimensions._1, gridDimensions._2)
   }
 
+  def revealCell(row: Int, col: Int) : Unit = {
+    if(row < 0 || row >= grid.length || col < 0 || col >= grid(row).length)
+      return
+
+    val cell = grid(row)(col)
+
+    if(cell.isRevealed || cell.isMine)
+      return
+
+    cell.isRevealed = true
+
+    if(cell.adjacentMines > 0)
+      return
+
+    val neighbors = getNeighbors(row, col)
+    neighbors.foreach { case (r, c) => revealCell(r, c) }
+
+  }
+
+  private def getNeighbors(row: Int, col: Int): Seq[(Int, Int)] = {
+    Seq(
+      (row - 1, col - 1), (row - 1, col), (row - 1, col + 1),
+      (row, col - 1),                     (row, col + 1),
+      (row + 1, col - 1), (row + 1, col), (row + 1, col + 1)
+    ).filter {
+      case (r, c) => r >= 0 && r < grid.length && c >= 0 && c < grid(0).length
+    }
+  }
+
+  def revealAllMines(): Unit = {
+    grid.foreach(row => row.foreach(cell => if (cell.isMine) cell.isRevealed = true))
+  }
 
 }

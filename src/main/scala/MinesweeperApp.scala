@@ -46,7 +46,16 @@ object MinesweeperApp extends JFXApp3 {
     }
 
     val controller = new GameController()
-    val view = new GameView(controller)
+
+    val showGameOverMessage: () => Unit = () => {
+      new Alert(AlertType.Information) {
+        title = "Game Over"
+        headerText = "You clicked on a mine!"
+        contentText = "Better luck next time!"
+      }.showAndWait()
+    }
+
+    val view = new GameView(controller, showGameOverMessage)
 
     lazy val mainLayout: BorderPane = new BorderPane {
       top = new MenuBar {
