@@ -4,8 +4,9 @@ import scalafx.geometry.Pos
 import scalafx.scene.Scene
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control.{Alert, ComboBox, ListView, Menu, MenuBar, MenuItem}
-import scalafx.scene.layout.{BorderPane, StackPane, VBox}
+import scalafx.scene.layout.{BorderPane, GridPane, StackPane, VBox}
 import scalafx.stage.FileChooser
+
 import java.io.{BufferedReader, File, FileReader}
 import scalafx.scene.control._
 
@@ -77,7 +78,7 @@ object MinesweeperApp extends JFXApp3 {
                 onAction = _ => loadGame(controller, view, mainLayout)
               },
               new MenuItem("Create level") {
-                onAction = _ => createLevel()
+                onAction = _ => createLevel(mainLayout)
               },
               new MenuItem("Results") {
                 onAction = _ => showResults()
@@ -207,9 +208,128 @@ object MinesweeperApp extends JFXApp3 {
     mainLayout.center = gridPane
   }
 
-  private def createLevel(): Unit = {
-    println("Create level functionality is not implemented yet.")
+  private def refreshLevelView(controller: GameController, gridPane: GridPane): Unit = {
+    gridPane.children.clear()
+    val grid = controller.getGrid()
+    for (row <- grid.indices; col <- grid(row).indices) {
+      val cell = grid(row)(col)
+      val button = new Label {
+        prefWidth = 40
+        prefHeight = 40
+        alignment = Pos.Center
+        style = if (cell.isMine) "-fx-background-color: red;" else "-fx-background-color: lightgray;"
+        text = if (cell.isMine) "💣" else if (cell.adjacentMines > 0) cell.adjacentMines.toString else ""
+      }
+      gridPane.add(button, col, row)
+    }
   }
+
+  private def saveLevelToFile(controller: GameController): Unit = {
+    val fileChooser = new FileChooser {
+      title = "Save Level"
+      extensionFilters.add(new FileChooser.ExtensionFilter("Text Files", "*.txt"))
+    }
+    val file = fileChooser.showSaveDialog(stage)
+    if (file != null) {
+      val writer = new java.io.PrintWriter(file)
+      try {
+        controller.getGrid().foreach { row =>
+          writer.println(row.map(cell => if (cell.isMine) "#" else "-").mkString(""))
+        }
+      } finally {
+        writer.close()
+      }
+      new Alert(AlertType.Information) {
+        title = "Save Successful"
+        headerText = "Level saved successfully!"
+      }.showAndWait()
+    }
+  }
+
+  private def createLevel(mainLayout: BorderPane): Unit = {
+    val controller = new GameController()
+    controller.initGrid(1, 1)
+
+    val gridPane = new GridPane {
+      hgap = 2
+      vgap = 2
+    }
+    refreshLevelView(controller, gridPane)
+
+    val options = Seq(
+      "Add Row at Beginning",
+      "Add Row at End",
+      "Add Column at Beginning",
+      "Add Column at End",
+      "Remove Row at Beginning",
+      "Remove Row at End",
+      "Remove Column at Beginning",
+      "Remove Column at End",
+      "Toggle Cell Type",
+      "Clear Sector"
+    )
+
+    val actionButton = new Button("Perform Action")
+    val saveButton = new Button("Save Level")
+
+    val optionsComboBox = new ComboBox[String] {
+      items = ObservableBuffer(options: _*)
+      promptText = "Choose an action"
+    }
+
+    val actionsBox = new VBox {
+      spacing = 10
+      alignment = Pos.TopCenter
+      children = Seq(optionsComboBox, actionButton, saveButton)
+    }
+
+    actionButton.onAction = _ => {
+      optionsComboBox.value.value match {
+        case "Add Row at Beginning"    => controller.addRowBegin()
+        case "Add Row at End"          => controller.addRowEnd()
+        case "Add Column at Beginning" => controller.addColumnBegin()
+        case "Add Column at End"       => controller.addColumnEnd()
+        case "Remove Row at Beginning" => controller.removeRowBegin()
+        case "Remove Row at End"       => controller.removeRowEnd()
+        case "Remove Column at Beginning" => controller.removeColumnBegin()
+        case "Remove Column at End"       => controller.removeColumnEnd()
+        case "Toggle Cell Type" =>
+          val row = promptForInt("Enter Row:")
+          val col = promptForInt("Enter Column:")
+          controller.toggleCellType(row, col)
+        case "Clear Sector" =>
+          val topLeftRow = promptForInt("Enter Top-Left Row:")
+          val topLeftCol = promptForInt("Enter Top-Left Column:")
+          val bottomRightRow = promptForInt("Enter Bottom-Right Row:")
+          val bottomRightCol = promptForInt("Enter Bottom-Right Column:")
+          controller.clearSector(topLeftRow, topLeftCol, bottomRightRow, bottomRightCol)
+        case _ => new Alert(AlertType.Warning) {
+          title = "Invalid Action"
+          contentText = "Please select a valid action."
+        }.showAndWait()
+      }
+      refreshLevelView(controller, gridPane)
+    }
+
+    saveButton.onAction = _ => saveLevelToFile(controller)
+
+    mainLayout.center = new VBox {
+      spacing = 10
+      alignment = Pos.TopCenter
+      children = Seq(gridPane, actionsBox)
+    }
+  }
+
+
+
+  private def promptForInt(message: String): Int = {
+    val dialog = new TextInputDialog(defaultValue = "0") {
+      title = "Input Required"
+      headerText = message
+    }
+    dialog.showAndWait().map(_.toInt).getOrElse(0)
+  }
+
 
   private def showResults(): Unit = {
     val resultsText = if (bestResults.isEmpty) {
@@ -231,4 +351,5 @@ object MinesweeperApp extends JFXApp3 {
     bestResults += ((playerName, score))
     bestResults.sortBy(-_._2)
   }
+
 }

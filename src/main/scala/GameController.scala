@@ -145,4 +145,68 @@ class GameController() {
     grid.foreach(row => row.foreach(cell => if (cell.isMine) cell.isRevealed = true))
   }
 
+  // Level generation
+
+  def addRowBegin(): Unit = {
+    val newRow = Array.fill(grid(0).length)(GameCell(isMine = false))
+    grid = newRow +: grid
+  }
+
+  def addRowEnd(): Unit = {
+    val newRow = Array.fill(grid(0).length)(GameCell(isMine = false))
+    grid = grid :+ newRow
+  }
+
+  def addColumnBegin(): Unit = {
+    grid = grid.map(row => GameCell(isMine = false) +: row )
+  }
+
+  def addColumnEnd() : Unit = {
+    grid = grid.map(row => row :+ GameCell(isMine = false))
+  }
+
+  def removeRowBegin() : Unit = {
+    if(grid.length > 1) {
+      grid = grid.tail
+    }
+  }
+
+  def removeRowEnd() : Unit = {
+    if(grid.length > 1) {
+      grid = grid.init
+    }
+  }
+
+  def removeColumnBegin() : Unit = {
+    if(grid(0).length > 1) {
+      grid = grid.map(row => row.tail)
+    }
+  }
+
+  def removeColumnEnd() : Unit = {
+    if(grid(0).length > 1) {
+      grid = grid.map(row => row.init)
+    }
+  }
+
+  def toggleCellType(row: Int, col: Int): Unit = {
+    if (row >= 0 && row < grid.length && col >= 0 && col < grid(row).length) {
+      grid(row)(col).isMine = !grid(row)(col).isMine
+    }
+  }
+
+  def clearSector(topLeftRow: Int, topLeftCol: Int, bottomRightRow: Int, bottomRightCol: Int): Unit = {
+    for {
+      row <- topLeftRow to bottomRightRow
+      col <- topLeftCol to bottomRightCol
+      if row >= 0 && row < grid.length && col >= 0 && col < grid(row).length
+    } {
+      grid(row)(col).isMine = false
+    }
+  }
+
+  // TODO: Add validation
+
+
+
 }
