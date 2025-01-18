@@ -308,7 +308,12 @@ object MinesweeperApp extends JFXApp3 {
 
     saveButton.onAction = _ => saveLevelToFile(controller)
 
-    val isometryOptions = Seq("Rotate Clockwise", "Rotate Counterclockwise", "Reflect Horizontally", "Reflect Vertically")
+    val isometryOptions = Seq(
+      "Rotate Clockwise", "Rotate Counterclockwise",
+      "Reflect Horizontally", "Reflect Vertically",
+      "Reflect Diagonal (Main)", "Reflect Diagonal (Secondary)",
+      "Central Symmetry", "Translation"
+    )
 
     val isometryComboBox = new ComboBox[String] {
       items = ObservableBuffer(isometryOptions: _*)
@@ -326,6 +331,16 @@ object MinesweeperApp extends JFXApp3 {
             controller.applyIsometry(Reflection("horizontal"))
           case "Reflect Vertically" =>
             controller.applyIsometry(Reflection("vertical"))
+          case "Reflect Diagonal (Main)" =>
+            controller.applyIsometry(Reflection("diagonal-main"))
+          case "Reflect Diagonal (Secondary)" =>
+            controller.applyIsometry(Reflection("diagonal-secondary"))
+          case "Central Symmetry" =>
+            controller.applyIsometry(CentralSymmetry())
+          case "Translation" =>
+            val dx = promptForInt("Enter Translation X:")
+            val dy = promptForInt("Enter Translation Y:")
+            controller.applyIsometry(Translation(dx, dy))
           case _ =>
             new Alert(AlertType.Warning) {
               title = "Invalid Isometry"
@@ -339,7 +354,7 @@ object MinesweeperApp extends JFXApp3 {
     mainLayout.center = new VBox {
       spacing = 10
       alignment = Pos.TopCenter
-      children = Seq(gridPane, optionsComboBox, actionButton, saveButton, isometryComboBox, applyIsometryButton)
+      children = Seq(gridPane, optionsComboBox, actionButton, isometryComboBox, applyIsometryButton, saveButton)
     }
   }
 

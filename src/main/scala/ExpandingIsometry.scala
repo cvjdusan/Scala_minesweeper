@@ -1,4 +1,5 @@
 case class ExpandingIsometry(isometry: Isometry) extends Isometry {
+
   override def apply(grid: Array[Array[GameCell]]): Array[Array[GameCell]] = {
     val transformed = isometry(grid)
     val maxRows = Math.max(grid.length, transformed.length)
