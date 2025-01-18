@@ -218,11 +218,12 @@ object MinesweeperApp extends JFXApp3 {
         prefHeight = 40
         alignment = Pos.Center
         style = if (cell.isMine) "-fx-background-color: red;" else "-fx-background-color: lightgray;"
-        text = if (cell.isMine) "💣" else if (cell.adjacentMines > 0) cell.adjacentMines.toString else ""
+        text = if (cell.isMine) "💣" else ""
       }
       gridPane.add(button, col, row)
     }
   }
+
 
   private def saveLevelToFile(controller: GameController): Unit = {
     val fileChooser = new FileChooser {
@@ -248,7 +249,7 @@ object MinesweeperApp extends JFXApp3 {
 
   private def createLevel(mainLayout: BorderPane): Unit = {
     val controller = new GameController()
-    controller.initGrid(1, 1)
+    controller.initGrid(5, 5) // Početna mreža 5x5
 
     val gridPane = new GridPane {
       hgap = 2
@@ -275,12 +276,6 @@ object MinesweeperApp extends JFXApp3 {
     val optionsComboBox = new ComboBox[String] {
       items = ObservableBuffer(options: _*)
       promptText = "Choose an action"
-    }
-
-    val actionsBox = new VBox {
-      spacing = 10
-      alignment = Pos.TopCenter
-      children = Seq(optionsComboBox, actionButton, saveButton)
     }
 
     actionButton.onAction = _ => {
@@ -313,12 +308,42 @@ object MinesweeperApp extends JFXApp3 {
 
     saveButton.onAction = _ => saveLevelToFile(controller)
 
+    val isometryOptions = Seq("Rotate Clockwise", "Rotate Counterclockwise", "Reflect Horizontally", "Reflect Vertically")
+
+    val isometryComboBox = new ComboBox[String] {
+      items = ObservableBuffer(isometryOptions: _*)
+      promptText = "Choose an isometry"
+    }
+
+    val applyIsometryButton = new Button("Apply Isometry") {
+      onAction = _ => {
+        isometryComboBox.value.value match {
+          case "Rotate Clockwise" =>
+            controller.applyIsometry(Rotation(clockwise = true))
+          case "Rotate Counterclockwise" =>
+            controller.applyIsometry(Rotation(clockwise = false))
+          case "Reflect Horizontally" =>
+            controller.applyIsometry(Reflection("horizontal"))
+          case "Reflect Vertically" =>
+            controller.applyIsometry(Reflection("vertical"))
+          case _ =>
+            new Alert(AlertType.Warning) {
+              title = "Invalid Isometry"
+              contentText = "Please select a valid isometry."
+            }.showAndWait()
+        }
+        refreshLevelView(controller, gridPane)
+      }
+    }
+
     mainLayout.center = new VBox {
       spacing = 10
       alignment = Pos.TopCenter
-      children = Seq(gridPane, actionsBox)
+      children = Seq(gridPane, optionsComboBox, actionButton, saveButton, isometryComboBox, applyIsometryButton)
     }
   }
+
+
 
 
 

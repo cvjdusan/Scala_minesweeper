@@ -8,7 +8,6 @@ class GameController() {
   private var clickCount: Int = 0
   private var levelCompleted: Boolean = false
 
-
   private val EMPTY_SPACE = '-'
   private val MINE_SPACE = '#'
 
@@ -207,6 +206,8 @@ class GameController() {
 
   // TODO: Add validation
 
-
+  def applyIsometry(isometry: Isometry): Unit = {
+    grid = isometry(grid)
+  }
 
 }
