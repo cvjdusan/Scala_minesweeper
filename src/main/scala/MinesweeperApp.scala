@@ -111,6 +111,8 @@ object MinesweeperApp extends JFXApp3 {
   }
 
   private def startNewGame(controller: GameController, view: GameView, difficultyComboBox: ComboBox[String], levelsListView: ListView[String], mainLayout: BorderPane): Unit = {
+    val filesPath = "C:\\Users\\cvdus\\Downloads\\"
+    val fileExtension = ".txt"
     val selectedDifficulty = difficultyComboBox.value.value
     val selectedLevel = levelsListView.selectionModel().getSelectedItem
 
@@ -127,17 +129,17 @@ object MinesweeperApp extends JFXApp3 {
 
     selectedDifficulty match {
       case "Beginner" =>
-        val filePath = "C:\\Users\\cvdus\\Downloads\\easy_level_1.txt"
+        val filePath = filesPath + createFileName("Beginner", selectedLevel) + fileExtension
         val file = getFile(filePath)
         gridData = readDataFromFile(file.get)
 
       case "Normal" =>
-        val filePath = "C:\\Users\\cvdus\\Downloads\\normal_level_1.txt"
+        val filePath = filesPath + createFileName("Normal", selectedLevel) + fileExtension
         val file = getFile(filePath)
         gridData = readDataFromFile(file.get)
 
       case "Advanced" =>
-        val filePath = "C:\\Users\\cvdus\\Downloads\\advanced_level_1.txt"
+        val filePath = filesPath + createFileName("Advanced", selectedLevel) + fileExtension
         val file = getFile(filePath)
         gridData = readDataFromFile(file.get)
 
@@ -148,6 +150,10 @@ object MinesweeperApp extends JFXApp3 {
 
 
     startGame(controller, view, mainLayout, gridData)
+  }
+
+  private def createFileName(difficulty: String, selectedLevel: String) : String = {
+    difficulty.toLowerCase.concat("_").concat(selectedLevel.replace(" ","_").toLowerCase)
   }
 
 
@@ -357,10 +363,6 @@ object MinesweeperApp extends JFXApp3 {
       children = Seq(gridPane, optionsComboBox, actionButton, isometryComboBox, applyIsometryButton, saveButton)
     }
   }
-
-
-
-
 
   private def promptForInt(message: String): Int = {
     val dialog = new TextInputDialog(defaultValue = "0") {
