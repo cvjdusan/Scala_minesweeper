@@ -7,8 +7,8 @@ class GameController() {
   private var startTime: Instant = _
   private var clickCount: Int = 0
   private var levelCompleted: Boolean = false
+  private var score: Long = 1000
 
-  private val EMPTY_SPACE = '-'
   private val MINE_SPACE = '#'
 
   def initGrid(rows: Int, columns: Int) : Unit = {
@@ -24,41 +24,30 @@ class GameController() {
     startTime = Instant.now()
   }
 
+  def initScore() : Unit = {
+    score = 1000
+  }
+
   def incrementClickCount(): Unit = {
     clickCount += 1
   }
 
   def getClickCount: Int = clickCount
 
-  def endGameSuccessfully(): Option[Int] = {
+  def endGameSuccessfully(): Option[(Long, Long, Int, Long)] = {
     if (!levelCompleted) {
       levelCompleted = true
       val duration = java.time.Duration.between(startTime, Instant.now()).toSeconds
-      Some((duration * 10 + clickCount * 5).toInt)
+      val timePenalty = duration * 2
+      val clickPenalty = clickCount * 10
+
+      val finalScore = (score - timePenalty - clickPenalty).max(0)
+      Some((score, duration, clickCount, finalScore))
     } else {
       None
     }
   }
 
-  def initializeGame(rows: Int, columns: Int): Unit = {
-    initGrid(rows, columns)
-
-    //placeMines(numMines)
-    calculateAdjacentMines(rows, columns)
-  }
-
-//  private def placeMines(numMines: Int): Unit = {
-//    val random = scala.util.Random
-//    var minesPlaced = 0
-//    while(minesPlaced < numMines) {
-//      val row = random.nextInt(gridSize)
-//      val col = random.nextInt(gridSize)
-//      if (!grid(row)(col).isMine) {
-//        grid(row)(col).isMine = true
-//        minesPlaced += 1
-//      }
-//    }
-//  }
 
   private def calculateAdjacentMines(rows: Int, columns: Int): Unit = {
     for (row <- 0 until rows; col <- 0 until columns) {
@@ -203,6 +192,22 @@ class GameController() {
       grid(row)(col).isMine = false
     }
   }
+
+  def suggestMove(): Option[(Int, Int)] = {
+    for (row <- grid.indices; col <- grid(row).indices) {
+      val cell = grid(row)(col)
+      if (!cell.isRevealed && !cell.isMine) {
+        return Some((row, col))
+      }
+    }
+    None
+  }
+
+  def decreaseScore(amount: Int): Unit = {
+    score = Math.max(0, score - amount)
+  }
+
+  def getScore: Long = score
 
   // TODO: Add validation
 

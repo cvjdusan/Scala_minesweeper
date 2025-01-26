@@ -1,11 +1,12 @@
 1. Srediti ucitavanje nivo-a iz fajla - DONE
+2. Obezbediti dugme za predlaganje poteza - DONE
 
-2. Obezbediti dugme za predlaganje poteza
-3. Cuvati i ucitati zapoceti nivo iz fajla
-4. Obezbediti odigravanje sekvence poteza učitavanjem iz fajla
-5. Srediti player listu rezultata
-6. Obezbediti i proveru validnosti nivoa, koja podrazumeva proveru da li su dimenzije nivoa i broj
+3. Refaktorisati Grid i ostale delove u vise funkcionalnu paradigmu
+4. Cuvati i ucitati zapoceti nivo iz fajla
+5. Obezbediti odigravanje sekvence poteza učitavanjem iz fajla
+6. Srediti player listu rezultata
+7. Obezbediti i proveru validnosti nivoa, koja podrazumeva proveru da li su dimenzije nivoa i broj
   polja sa minama u dozvoljenim granicama za zadatu težinu nivoa.
-7. Slozene operacije proveriti i doraditi
-8. Refaktorisati Grid i ostale delove u vise funkcionalnu paradigmu
+8. Slozene operacije proveriti i doraditi
+
 9. Napisa unit testove

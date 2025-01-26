@@ -101,6 +101,10 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
     })
   }
 
+  def markSuggestedMove(row: Int, col: Int): Unit = {
+    buttonGrid(row)(col).style = "-fx-background-color: yellow;"
+  }
+
 
 
 }

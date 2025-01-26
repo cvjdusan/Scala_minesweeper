@@ -4,7 +4,7 @@ import scalafx.geometry.Pos
 import scalafx.scene.Scene
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control.{Alert, ComboBox, ListView, Menu, MenuBar, MenuItem}
-import scalafx.scene.layout.{BorderPane, GridPane, StackPane, VBox}
+import scalafx.scene.layout.{BorderPane, GridPane, HBox, StackPane, VBox}
 import scalafx.stage.FileChooser
 
 import java.io.{BufferedReader, File, FileReader}
@@ -12,7 +12,8 @@ import scalafx.scene.control._
 
 object MinesweeperApp extends JFXApp3 {
 
-  val bestResults = scala.collection.mutable.ListBuffer[(String, Int)]()
+  val bestResults = scala.collection.mutable.ListBuffer[(String, Long)]()
+
 
   override def start(): Unit = {
     val difficulty = Seq("Beginner", "Normal", "Advanced")
@@ -52,38 +53,80 @@ object MinesweeperApp extends JFXApp3 {
     val controller = new GameController()
 
     val showGameOverMessage: () => Unit = () => {
-      val score = controller.endGameSuccessfully()
-      score.foreach { s =>
+      val result = controller.endGameSuccessfully()
+      result.foreach { case (initialScore, timeSpent, clicks, finalScore) =>
         val playerName = "Player 1"
-        updateResults(playerName, s)
+        updateResults(playerName, finalScore)
+
+        new Alert(AlertType.Information) {
+          title = "Game Over"
+          headerText = "💣 BOOM 💣 Game over!"
+          contentText =
+            s"""
+               |Initial Score: $initialScore
+               |Time Spent: $timeSpent seconds
+               |Clicks: $clicks
+               |Final Score: $finalScore
+               |""".stripMargin
+        }.showAndWait()
       }
-      new Alert(AlertType.Information) {
-        title = "Game Over"
-        headerText =  "💣 BOOM 💣 Game over!"
-        contentText = score.map(s => s"Your score: $s").getOrElse("No score recorded.")
-      }.showAndWait()
     }
+
 
     val view = new GameView(controller, showGameOverMessage)
 
+    val scoreLabel = new Label("Score: " + controller.getScore) {
+      visible = false
+    }
+
+    val hintButton = new Button("Hint") {
+      visible = false
+      onAction = _ => {
+        val suggestedMove = controller.suggestMove()
+        suggestedMove match {
+          case Some((row, col)) =>
+            view.markSuggestedMove(row, col)
+            controller.decreaseScore(5)
+            updateScoreLabel(controller, scoreLabel)
+          case None =>
+            new Alert(AlertType.Information) {
+              title = "Hint"
+              headerText = "No Moves Available"
+              contentText = "There are no valid moves left!"
+            }.showAndWait()
+        }
+      }
+    }
+
     lazy val mainLayout: BorderPane = new BorderPane {
-      top = new MenuBar {
-        menus = Seq(
-          new Menu("Options") {
-            items = Seq(
-              new MenuItem("New game") {
-                onAction = _ => resetToSelection(difficultyComboBox, levelsListView, startButton, mainLayout)
-              },
-              new MenuItem("Load game") {
-                onAction = _ => loadGame(controller, view, mainLayout)
-              },
-              new MenuItem("Create level") {
-                onAction = _ => createLevel(mainLayout)
-              },
-              new MenuItem("Results") {
-                onAction = _ => showResults()
+      top = new VBox {
+        spacing = 10
+        alignment = Pos.Center
+        children = Seq(
+          new MenuBar {
+            menus = Seq(
+              new Menu("Options") {
+                items = Seq(
+                  new MenuItem("New game") {
+                    onAction = _ => resetToSelection(difficultyComboBox, levelsListView, startButton, mainLayout, scoreLabel, hintButton, controller)
+                  },
+                  new MenuItem("Load game") {
+                    onAction = _ => loadGame(controller, view, mainLayout, scoreLabel, hintButton)
+                  },
+                  new MenuItem("Create level") {
+                    onAction = _ => createLevel(mainLayout)
+                  },
+                  new MenuItem("Results") {
+                    onAction = _ => showResults()
+                  }
+                )
               }
             )
+          },
+          new HBox {
+            spacing = 10
+            alignment = Pos.Center
+            children = Seq(scoreLabel, hintButton)
           }
         )
       }
@@ -98,7 +141,8 @@ object MinesweeperApp extends JFXApp3 {
       }
     }
 
-    startButton.onAction = _ => startNewGame(controller, view, difficultyComboBox, levelsListView, mainLayout)
+
+    startButton.onAction = _ => startNewGame(controller, view, difficultyComboBox, levelsListView, mainLayout, scoreLabel, hintButton)
 
     stage = new JFXApp3.PrimaryStage {
       title = "Minesweeper"
@@ -110,7 +154,17 @@ object MinesweeperApp extends JFXApp3 {
     }
   }
 
-  private def startNewGame(controller: GameController, view: GameView, difficultyComboBox: ComboBox[String], levelsListView: ListView[String], mainLayout: BorderPane): Unit = {
+  def updateScoreLabel(controller: GameController, scoreLabel: Label): Unit = {
+    scoreLabel.text = s"Score: ${controller.getScore}"
+  }
+
+  private def startNewGame(controller: GameController,
+                           view: GameView,
+                           difficultyComboBox: ComboBox[String],
+                           levelsListView: ListView[String],
+                           mainLayout: BorderPane,
+                           scoreLabel: Label,
+                           hintButton: Button): Unit = {
     val filesPath = "C:\\Users\\cvdus\\Downloads\\"
     val fileExtension = ".txt"
     val selectedDifficulty = difficultyComboBox.value.value
@@ -148,6 +202,8 @@ object MinesweeperApp extends JFXApp3 {
         return
     }
 
+    scoreLabel.visible = true
+    hintButton.visible = true
 
     startGame(controller, view, mainLayout, gridData)
   }
@@ -167,11 +223,20 @@ object MinesweeperApp extends JFXApp3 {
     }
   }
 
-  private def resetToSelection(difficultyComboBox: ComboBox[String], levelsListView: ListView[String], startButton: Button, mainLayout: BorderPane): Unit = {
+  private def resetToSelection(difficultyComboBox: ComboBox[String],
+                               levelsListView: ListView[String],
+                               startButton: Button,
+                               mainLayout: BorderPane,
+                               scoreLabel: Label,
+                               hintButton: Button,
+                               controller: GameController): Unit = {
     difficultyComboBox.value = null
     levelsListView.items.value.clear()
     levelsListView.disable = true
     startButton.disable = true
+    scoreLabel.visible = false
+    hintButton.visible = false
+    resetScoreView(controller, scoreLabel)
     mainLayout.center = new VBox {
       spacing = 10
       alignment = Pos.Center
@@ -183,13 +248,20 @@ object MinesweeperApp extends JFXApp3 {
     }
   }
 
-  private def loadGame(controller: GameController, view: GameView, mainLayout: BorderPane): Unit = {
+  private def resetScoreView(controller: GameController, scoreLabel: Label) = {
+    controller.initScore()
+    updateScoreLabel(controller, scoreLabel)
+  }
+
+  private def loadGame(controller: GameController, view: GameView, mainLayout: BorderPane, scoreLabel: Label, hintButton: Button): Unit = {
     val fileChooser = new FileChooser {
       title = "Load Game"
       extensionFilters.add(new FileChooser.ExtensionFilter("Game Files", "*.txt"))
     }
     val file: File = fileChooser.showOpenDialog(stage)
     val gridData = readDataFromFile(file)
+    scoreLabel.visible = true
+    hintButton.visible = true
     startGame(controller, view, mainLayout, gridData)
   }
 
@@ -210,6 +282,7 @@ object MinesweeperApp extends JFXApp3 {
   private def startGame(controller: GameController, view: GameView, mainLayout: BorderPane, gridData: Array[String]): Unit = {
     controller.loadGame(gridData)
     controller.startGameTime()
+    controller.initScore()
     val gridPane = view.createGrid(gridData.length, gridData(0).length)
     mainLayout.center = gridPane
   }
@@ -389,7 +462,7 @@ object MinesweeperApp extends JFXApp3 {
     }.showAndWait()
   }
 
-  def updateResults(playerName: String, score: Int): Unit = {
+  def updateResults(playerName: String, score: Long): Unit = {
     bestResults += ((playerName, score))
     bestResults.sortBy(-_._2)
   }
