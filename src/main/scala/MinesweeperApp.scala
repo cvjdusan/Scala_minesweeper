@@ -10,6 +10,8 @@ import scalafx.stage.FileChooser
 import java.io.{BufferedReader, File, FileReader}
 import scalafx.scene.control._
 
+import scala.util.Random
+
 object MinesweeperApp extends JFXApp3 {
 
   val bestResults = scala.collection.mutable.ListBuffer[(String, Long)]()
@@ -23,7 +25,6 @@ object MinesweeperApp extends JFXApp3 {
       "Normal" -> Seq("Level 1", "Level 2", "Random"),
       "Advanced" -> Seq("Level 1", "Level 2", "Random")
     )
-
 
     val difficultyComboBox = new ComboBox[String] {
       promptText = "Choose difficulty"
@@ -165,10 +166,10 @@ object MinesweeperApp extends JFXApp3 {
                            mainLayout: BorderPane,
                            scoreLabel: Label,
                            hintButton: Button): Unit = {
-    val filesPath = "C:\\Users\\cvdus\\Downloads\\"
+    val filesPath = "C:\\Users\\cvdus\\OneDrive\\Documents\\Minesweeper_levels\\"
     val fileExtension = ".txt"
     val selectedDifficulty = difficultyComboBox.value.value
-    val selectedLevel = levelsListView.selectionModel().getSelectedItem
+    var selectedLevel = levelsListView.selectionModel().getSelectedItem
 
     if (selectedDifficulty == null || selectedLevel == null) {
       new Alert(AlertType.Warning) {
@@ -209,7 +210,10 @@ object MinesweeperApp extends JFXApp3 {
   }
 
   private def createFileName(difficulty: String, selectedLevel: String) : String = {
-    difficulty.toLowerCase.concat("_").concat(selectedLevel.replace(" ","_").toLowerCase)
+    if(selectedLevel.equals("Random"))
+      difficulty.toLowerCase.concat("_").concat("level_".concat(Random.between(1, 3).toString).toLowerCase)
+    else
+      difficulty.toLowerCase.concat("_").concat(selectedLevel.replace(" ","_").toLowerCase)
   }
 
 

@@ -1,5 +1,7 @@
 import java.time.Instant
 import scala.annotation.tailrec
+import scala.collection.mutable
+import scala.util.Random
 
 class GameController() {
 
@@ -8,6 +10,7 @@ class GameController() {
   private var clickCount: Int = 0
   private var levelCompleted: Boolean = false
   private var score: Long = 1000
+  private val suggested = mutable.Set.empty[(Int, Int)]
 
   private val MINE_SPACE = '#'
 
@@ -47,7 +50,6 @@ class GameController() {
       None
     }
   }
-
 
   private def calculateAdjacentMines(rows: Int, columns: Int): Unit = {
     for (row <- 0 until rows; col <- 0 until columns) {
@@ -194,13 +196,20 @@ class GameController() {
   }
 
   def suggestMove(): Option[(Int, Int)] = {
-    for (row <- grid.indices; col <- grid(row).indices) {
-      val cell = grid(row)(col)
-      if (!cell.isRevealed && !cell.isMine) {
-        return Some((row, col))
-      }
+    val candidates: Vector[(Int, Int)] = (for {
+      row <- grid.indices
+      col <- grid(row).indices
+      cell = grid(row)(col)
+      pos  = (row, col)
+      if !cell.isRevealed && !cell.isMine && !suggested(pos)
+    } yield pos).toVector
+
+    if (candidates.isEmpty) None
+    else {
+      val pick = candidates(Random.nextInt(candidates.size))
+      suggested += pick
+      Some(pick)
     }
-    None
   }
 
   def decreaseScore(amount: Int): Unit = {
