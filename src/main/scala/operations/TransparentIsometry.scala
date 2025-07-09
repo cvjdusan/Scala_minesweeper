@@ -1,3 +1,6 @@
+package operations
+import model.GameCell
+
 case class TransparentIsometry(isometry: Isometry) extends Isometry {
   override def apply(grid: Array[Array[GameCell]]): Array[Array[GameCell]] = {
     val transformed = isometry(grid)

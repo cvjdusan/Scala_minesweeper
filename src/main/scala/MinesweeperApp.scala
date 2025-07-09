@@ -9,6 +9,7 @@ import scalafx.stage.FileChooser
 
 import java.io.{BufferedReader, File, FileReader}
 import scalafx.scene.control._
+import operations.{CentralSymmetry, Reflection, Rotation, Translation}
 
 import scala.util.Random
 
@@ -293,7 +294,7 @@ object MinesweeperApp extends JFXApp3 {
 
   private def refreshLevelView(controller: GameController, gridPane: GridPane): Unit = {
     gridPane.children.clear()
-    val grid = controller.getGrid()
+    val grid = controller.getGrid
     for (row <- grid.indices; col <- grid(row).indices) {
       val cell = grid(row)(col)
       val button = new Label {
@@ -317,7 +318,7 @@ object MinesweeperApp extends JFXApp3 {
     if (file != null) {
       val writer = new java.io.PrintWriter(file)
       try {
-        controller.getGrid().foreach { row =>
+        controller.getGrid.foreach { row =>
           writer.println(row.map(cell => if (cell.isMine) "#" else "-").mkString(""))
         }
       } finally {

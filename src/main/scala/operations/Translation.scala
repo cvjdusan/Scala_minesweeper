@@ -1,3 +1,6 @@
+package operations
+import model.GameCell
+
 case class Translation(dx: Int, dy: Int) extends Isometry {
 
   override def apply(grid: Array[Array[GameCell]]): Array[Array[GameCell]] = {

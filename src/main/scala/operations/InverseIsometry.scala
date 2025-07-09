@@ -1,3 +1,6 @@
+package operations
+import model.GameCell
+
 case class InverseIsometry(isometry: Isometry) extends Isometry {
 
    def apply(grid: Array[Array[GameCell]]): Array[Array[GameCell]] = isometry match {

@@ -1,3 +1,6 @@
+package operations
+import model.GameCell
+
 case class Rotation(clockwise: Boolean = true) extends Isometry {
 
   override def apply(grid: Array[Array[GameCell]]): Array[Array[GameCell]] = {

@@ -1,5 +1,6 @@
 import scalafx.scene.control._
 import javafx.scene.input.MouseButton
+import model.GameCell
 import scalafx.scene.layout.GridPane
 
 
@@ -22,7 +23,7 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
         prefWidth = 40
         prefHeight = 40
         text = ""
-        onMousePressed  = event => handleCellClick(row, col, event.getButton)
+        onMousePressed = event => handleCellClick(row, col, event.getButton)
       }
 
       buttonGrid(row)(col) = button
@@ -40,15 +41,15 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
     button match {
       case MouseButton.PRIMARY =>
         controller.incrementClickCount()
-        if(cell.isMine) {
+        if (cell.isMine) {
           // reveal all
           controller.revealAllMines()
-          updateView(controller.getGrid(), isGameOver = true)
+          updateView(controller.getGrid, isGameOver = true)
           onGameOver()
         } else {
           // reveal cell and neighbours without mines
           controller.revealCell(row, col)
-          updateView(controller.getGrid(), isGameOver = false)
+          updateView(controller.getGrid, isGameOver = false)
         }
 
 
@@ -79,8 +80,8 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
         if (cell.isMine) {
           button.text = "💣"
           button.style = "-fx-background-color: red;"
-        } else if (cell.adjacentMines > 0) {
-          button.text = cell.adjacentMines.toString
+        } else if (cell.adjacent > 0) {
+          button.text = cell.adjacent.toString
           button.style = "-fx-background-color: lightblue;"
         } else {
           button.text = ""
@@ -88,7 +89,7 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
         }
       }
 
-      if(isGameOver) button.disable = true
+      if (isGameOver) button.disable = true
     }
   }
 
@@ -104,7 +105,6 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
   def markSuggestedMove(row: Int, col: Int): Unit = {
     buttonGrid(row)(col).style = "-fx-background-color: yellow;"
   }
-
 
 
 }

@@ -1,3 +1,6 @@
+package operations
+import model.GameCell
+
 case class Reflection(axis: String) extends Isometry {
 
   override def apply(grid: Array[Array[GameCell]]): Array[Array[GameCell]] = {
