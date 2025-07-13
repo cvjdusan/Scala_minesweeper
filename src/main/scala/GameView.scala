@@ -70,7 +70,7 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
     buttonGrid(row)(col).scene().getRoot.requestFocus()
   }
 
-  def updateView(grid: Array[Array[GameCell]], isGameOver: Boolean): Unit = {
+  def updateView(grid: Vector[Vector[GameCell]], isGameOver: Boolean): Unit = {
     for (row <- grid.indices; col <- grid(row).indices) {
       val cell = grid(row)(col)
       val button = buttonGrid(row)(col)

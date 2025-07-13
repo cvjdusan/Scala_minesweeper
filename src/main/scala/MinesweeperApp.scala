@@ -420,7 +420,7 @@ object MinesweeperApp extends JFXApp3 {
           case "Reflect Diagonal (Secondary)" =>
             controller.applyIsometry(Reflection("diagonal-secondary"))
           case "Central Symmetry" =>
-            controller.applyIsometry(CentralSymmetry())
+            controller.applyIsometry(CentralSymmetry)
           case "Translation" =>
             val dx = promptForInt("Enter Translation X:")
             val dy = promptForInt("Enter Translation Y:")

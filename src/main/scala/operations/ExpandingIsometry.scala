@@ -1,26 +1,21 @@
 package operations
+
 import model.GameCell
 
-case class ExpandingIsometry(isometry: Isometry) extends Isometry {
+case class ExpandingIsometry(iso: Isometry) extends Isometry {
+  override def apply[A](g: Vector[Vector[A]]): Vector[Vector[A]] = {
+    val t = iso(g)
+    val maxRows = math.max(g.length, t.length)
+    val maxCols = math.max(g.headOption.map(_.length).getOrElse(0), t.headOption.map(_.length).getOrElse(0))
 
-  override def apply(grid: Array[Array[GameCell]]): Array[Array[GameCell]] = {
-    val transformed = isometry(grid)
-    val maxRows = Math.max(grid.length, transformed.length)
-    val maxCols = Math.max(grid.head.length, transformed.head.length)
-
-    val expandedOriginal = expandGrid(grid, maxRows, maxCols)
-    val expandedTransformed = expandGrid(transformed, maxRows, maxCols)
-
-    expandedOriginal.zip(expandedTransformed).map { case (row1, row2) =>
-      row1.zip(row2).map { case (cell1, cell2) =>
-        if (cell2.isMine) cell2 else cell1
-      }
+    def expand[B](m: Vector[Vector[B]], rows: Int, cols: Int, empty: => B): Vector[Vector[B]] = {
+      val filledCols = m.map(row => row ++ Vector.fill(cols - row.length)(empty))
+      filledCols ++ Vector.fill(rows - filledCols.length)(Vector.fill(cols)(empty))
     }
-  }
 
-  private def expandGrid(grid: Array[Array[GameCell]], rows: Int, cols: Int): Array[Array[GameCell]] = {
-    val emptyRow = Array.fill(cols)(GameCell(isMine = false))
-    val expanded = grid.map(row => row ++ Array.fill(cols - row.length)(GameCell(isMine = false)))
-    expanded ++ Array.fill(rows - expanded.length)(emptyRow)
+    val emptyCell = g.headOption.flatMap(_.headOption).getOrElse(().asInstanceOf[A])
+    val eg = expand(g, maxRows, maxCols, emptyCell)
+    val et = expand(t, maxRows, maxCols, emptyCell)
+    eg.zip(et).map { case (r1, r2) => r1.zip(r2).map(_._2) }
   }
 }

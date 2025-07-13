@@ -1,15 +1,12 @@
 package operations
+
 import model.GameCell
 
-case class InverseIsometry(isometry: Isometry) extends Isometry {
-
-   def apply(grid: Array[Array[GameCell]]): Array[Array[GameCell]] = isometry match {
-    case Rotation(clockwise) =>
-      Rotation(!clockwise).apply(grid) // Inverz rotacije: suprotan smer
-    case Reflection(axis) =>
-      Reflection(axis).apply(grid) // Refleksija je simetrična: njen inverz je sama refleksija
-    case _ =>
-      throw new UnsupportedOperationException("No inverse defined for this isometry")
-
-   }
+case class InverseIsometry(iso: Isometry) extends Isometry {
+  override def apply[A](g: Vector[Vector[A]]): Vector[Vector[A]] = iso match {
+    case Rotation(cw) => Rotation(!cw)(g)
+    case r: Reflection => r(g) // same as original
+    case _ => throw new UnsupportedOperationException("No inverse defined for this isometry")
+  }
 }
+
