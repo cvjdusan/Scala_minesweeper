@@ -1,9 +1,11 @@
 import model.GameCell
 import operations.Isometry
 
+import java.nio.file.{Files, Path}
 import java.time.Instant
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.jdk.CollectionConverters.{CollectionHasAsScala, IterableHasAsJava}
 import scala.util.Random
 
 class GameController() {
@@ -19,6 +21,9 @@ class GameController() {
   private val suggested = mutable.Set.empty[(Int, Int)]
 
   private val MineChar = '#'
+  private val FlagChar = 'F'
+  private val RevealChar = 'R'
+  private val HiddenChar = '-'
 
   // ---------------------------------------------------------------------------
   // HELPERS
@@ -104,15 +109,34 @@ class GameController() {
   // ---------------------------------------------------------------------------
   //  LOAD/SAVE
   // ---------------------------------------------------------------------------
-  def loadGame(lines: Array[String]): Unit = {
+  def saveGame(path: Path): Unit = {
+    val lines = grid.map(_.map {
+      case GameCell(true, _, _, _) => MineChar
+      case GameCell(_, _, _, true) => FlagChar
+      case GameCell(_, rev, _, _) if rev => RevealChar
+      case _ => HiddenChar
+    }.mkString)
+    Files.write(path, lines.asJava)
+  }
+
+  def loadGame(lines: Array[String]): Unit = loadLines(lines.toSeq)
+
+  def loadLines(lines: Seq[String]): Unit = {
     val r = lines.length
     val c = lines.headOption.map(_.length).getOrElse(0)
     initGrid(r, c)
-    grid = grid.zipWithIndex.map { case (_, rowIdx) =>
-      Vector.tabulate(c) { colIdx =>
-        GameCell(isMine = lines(rowIdx)(colIdx) == MineChar)
+
+    grid = lines.zipWithIndex.map { case (rowStr, ri) =>
+      rowStr.zipWithIndex.map { case (ch, ci) => ch match {
+        case `MineChar` => GameCell(isMine = true)
+        case `FlagChar` => GameCell(isMine = false, isFlagged = true)
+        case `RevealChar` => GameCell(isMine = false, isRevealed = true)
+        case _ => GameCell(isMine = false)
+
       }
-    }
+      }.toVector
+    }.toVector
+
     recalculateAdjacent()
   }
 

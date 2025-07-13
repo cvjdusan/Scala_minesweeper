@@ -112,6 +112,9 @@ object MinesweeperApp extends JFXApp3 {
                   new MenuItem("New game") {
                     onAction = _ => resetToSelection(difficultyComboBox, levelsListView, startButton, mainLayout, scoreLabel, hintButton, controller)
                   },
+                  new MenuItem("Save game")   {
+                    onAction = _ => saveGame(controller)
+                  },
                   new MenuItem("Load game") {
                     onAction = _ => loadGame(controller, view, mainLayout, scoreLabel, hintButton)
                   },
@@ -288,7 +291,10 @@ object MinesweeperApp extends JFXApp3 {
     controller.loadGame(gridData)
     controller.startGameTime()
     controller.initScore()
+
     val gridPane = view.createGrid(gridData.length, gridData(0).length)
+
+    view.updateView(controller.getGrid, isGameOver = false)
     mainLayout.center = gridPane
   }
 
@@ -470,6 +476,20 @@ object MinesweeperApp extends JFXApp3 {
   def updateResults(playerName: String, score: Long): Unit = {
     bestResults += ((playerName, score))
     bestResults.sortBy(-_._2)
+  }
+
+  private def saveGame(controller: GameController): Unit = {
+    val chooser = new FileChooser {
+      title = "Save Game"
+      extensionFilters.add(new FileChooser.ExtensionFilter("Text Files", "*.txt"))
+    }
+    Option(chooser.showSaveDialog(stage)).foreach { file =>
+      controller.saveGame(file.toPath)
+      new Alert(AlertType.Information) {
+        title = "Saved"
+        headerText = "Game saved successfully."
+      }.showAndWait()
+    }
   }
 
 }
