@@ -140,6 +140,32 @@ class GameController() {
     recalculateAdjacent()
   }
 
+  def playMoves(seq: Seq[String]): Unit = seq.foreach {
+    case Move.Left(r, c) => revealCell(r - 1, c - 1)
+    case Move.Right(r, c) => toggleCellType(r - 1, c - 1)
+    case _ => ()
+  }
+
+  private object Move {
+    private val L = """L\((\d+),(\d+)\)""".r
+    private val D = """D\((\d+),(\d+)\)""".r
+
+    object Left {
+      def unapply(s: String): Option[(Int, Int)] = s match {
+        case L(x, y) => Some((x.toInt, y.toInt))
+        case _ => None
+      }
+    }
+
+    object Right {
+      def unapply(s: String): Option[(Int, Int)] = s match {
+        case D(x, y) => Some((x.toInt, y.toInt))
+        case _ => None
+      }
+    }
+  }
+
+
   // ---------------------------------------------------------------------------
   //  GAMEPLAY
   // ---------------------------------------------------------------------------

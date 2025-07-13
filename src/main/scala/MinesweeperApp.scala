@@ -115,6 +115,9 @@ object MinesweeperApp extends JFXApp3 {
                   new MenuItem("Save game")   {
                     onAction = _ => saveGame(controller)
                   },
+                  new MenuItem("Play moves")  {
+                    onAction = _ => playMoves(controller, view)
+                  },
                   new MenuItem("Load game") {
                     onAction = _ => loadGame(controller, view, mainLayout, scoreLabel, hintButton)
                   },
@@ -489,6 +492,18 @@ object MinesweeperApp extends JFXApp3 {
         title = "Saved"
         headerText = "Game saved successfully."
       }.showAndWait()
+    }
+  }
+
+  private def playMoves(controller: GameController, view: GameView): Unit = {
+    val chooser = new FileChooser {
+      title = "Open Move Sequence"
+      extensionFilters.add(new FileChooser.ExtensionFilter("Text Files", "*.txt"))
+    }
+    Option(chooser.showOpenDialog(stage)).foreach { file =>
+      val moves = scala.io.Source.fromFile(file).getLines().toSeq
+      controller.playMoves(moves)
+      view.updateView(controller.getGrid, isGameOver = false)
     }
   }
 
