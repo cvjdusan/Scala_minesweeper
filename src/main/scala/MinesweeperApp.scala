@@ -11,53 +11,36 @@ import java.io.{BufferedReader, File, FileReader}
 import scalafx.scene.control._
 import operations.{CentralSymmetry, Reflection, Rotation, Translation}
 
-import scala.util.Random
+import scala.util._
 
 object MinesweeperApp extends JFXApp3 {
 
   val bestResults = scala.collection.mutable.ListBuffer[(String, Long)]()
-
+  val difficulties = Seq("Beginner", "Normal", "Advanced")
+  val levels = Map(
+    "Beginner" -> Seq("Level 1", "Level 2", "Random"),
+    "Normal" -> Seq("Level 1", "Level 2", "Random"),
+    "Advanced" -> Seq("Level 1", "Level 2", "Random")
+  )
 
   override def start(): Unit = {
-    val difficulty = Seq("Beginner", "Normal", "Advanced")
-
-    val levels = Map(
-      "Beginner" -> Seq("Level 1", "Level 2", "Random"),
-      "Normal" -> Seq("Level 1", "Level 2", "Random"),
-      "Advanced" -> Seq("Level 1", "Level 2", "Random")
-    )
-
-    val difficultyComboBox = new ComboBox[String] {
-      promptText = "Choose difficulty"
-      items = ObservableBuffer[String](difficulty: _*)
-    }
-
-    val levelsListView = new ListView[String] {
-      prefHeight = 100
-      disable = true
-    }
-
-    val startButton = new Button("Start Game") {
-      disable = true
-    }
-
-    difficultyComboBox.onAction = _ => {
-      val selectedDifficulty = difficultyComboBox.value.value
-      levelsListView.items = ObservableBuffer[String](levels.getOrElse(selectedDifficulty, Seq.empty[String]): _*)
-      levelsListView.disable = false
-      startButton.disable = levelsListView.selectionModel().getSelectedItem == null
-    }
-
-    levelsListView.selectionModel().selectedItemProperty().addListener { (_, _, newValue) =>
-      startButton.disable = newValue == null
-    }
-
     val controller = new GameController()
 
+    val difficultyComboBox = createDifficultyBox()
+    val levelsListView = createLevelList()
+    val startButton = createStartButton()
+
+    val scoreLabel = createScoreLabel(controller)
+
     val showGameOverMessage: () => Unit = () => {
+
+      // end it in controller
       val result = controller.endGameSuccessfully()
+
       result.foreach { case (initialScore, timeSpent, clicks, finalScore) =>
         val playerName = "Player 1"
+
+        // update results
         updateResults(playerName, finalScore)
 
         new Alert(AlertType.Information) {
@@ -71,25 +54,41 @@ object MinesweeperApp extends JFXApp3 {
                |Final Score: $finalScore
                |""".stripMargin
         }.showAndWait()
+
       }
     }
 
-
     val view = new GameView(controller, showGameOverMessage)
 
-    val scoreLabel = new Label("Score: " + controller.getScore) {
-      visible = false
+    // actions
+
+    difficultyComboBox.onAction = _ => {
+      val selectedDifficulty = difficultyComboBox.value.value
+      levelsListView.items = ObservableBuffer[String](levels.getOrElse(selectedDifficulty, Seq.empty[String]): _*)
+      levelsListView.disable = false
+      startButton.disable = levelsListView.selectionModel().getSelectedItem == null
     }
+
+    levelsListView.selectionModel().selectedItemProperty().addListener { (_, _, newValue) =>
+      startButton.disable = newValue == null
+    }
+
+    // hint action
 
     val hintButton = new Button("Hint") {
       visible = false
       onAction = _ => {
+
+        // get suggested move
         val suggestedMove = controller.suggestMove()
+
         suggestedMove match {
           case Some((row, col)) =>
+
             view.markSuggestedMove(row, col)
             controller.decreaseScore(5)
             updateScoreLabel(controller, scoreLabel)
+
           case None =>
             new Alert(AlertType.Information) {
               title = "Hint"
@@ -99,6 +98,8 @@ object MinesweeperApp extends JFXApp3 {
         }
       }
     }
+
+    // main layout init
 
     lazy val mainLayout: BorderPane = new BorderPane {
       top = new VBox {
@@ -112,10 +113,10 @@ object MinesweeperApp extends JFXApp3 {
                   new MenuItem("New game") {
                     onAction = _ => resetToSelection(difficultyComboBox, levelsListView, startButton, mainLayout, scoreLabel, hintButton, controller)
                   },
-                  new MenuItem("Save game")   {
+                  new MenuItem("Save game") {
                     onAction = _ => saveGame(controller)
                   },
-                  new MenuItem("Play moves")  {
+                  new MenuItem("Play moves") {
                     onAction = _ => playMoves(controller, view)
                   },
                   new MenuItem("Load game") {
@@ -150,7 +151,11 @@ object MinesweeperApp extends JFXApp3 {
     }
 
 
+    // start button action
+
     startButton.onAction = _ => startNewGame(controller, view, difficultyComboBox, levelsListView, mainLayout, scoreLabel, hintButton)
+
+    // set up stage
 
     stage = new JFXApp3.PrimaryStage {
       title = "Minesweeper"
@@ -161,6 +166,29 @@ object MinesweeperApp extends JFXApp3 {
       }
     }
   }
+
+  private def createDifficultyBox(): ComboBox[String] =
+    new ComboBox[String] {
+      promptText = "Choose difficulty"
+      items = ObservableBuffer[String](difficulties: _*)
+    }
+
+  private def createLevelList(): ListView[String] =
+    new ListView[String] {
+      prefHeight = 100
+      disable = true
+    }
+
+  private def createStartButton(): Button =
+    new Button("Start Game") {
+      disable = true
+    }
+
+  private def createScoreLabel(controller: GameController): Label =
+    new Label(s"Score: ${controller.getScore}") {
+      visible = false
+    }
+
 
   def updateScoreLabel(controller: GameController, scoreLabel: Label): Unit = {
     scoreLabel.text = s"Score: ${controller.getScore}"
@@ -187,40 +215,20 @@ object MinesweeperApp extends JFXApp3 {
       return
     }
 
-    var gridData: Array[String] = Array.empty[String]
+    val fileName = createFileName(selectedDifficulty, selectedLevel)
+    val filePath = filesPath + fileName + fileExtension
 
-    selectedDifficulty match {
-      case "Beginner" =>
-        val filePath = filesPath + createFileName("Beginner", selectedLevel) + fileExtension
-        val file = getFile(filePath)
-        gridData = readDataFromFile(file.get)
-
-      case "Normal" =>
-        val filePath = filesPath + createFileName("Normal", selectedLevel) + fileExtension
-        val file = getFile(filePath)
-        gridData = readDataFromFile(file.get)
-
-      case "Advanced" =>
-        val filePath = filesPath + createFileName("Advanced", selectedLevel) + fileExtension
-        val file = getFile(filePath)
-        gridData = readDataFromFile(file.get)
-
-      case _ =>
-        println(s"Unknown difficulty: $selectedDifficulty")
-        return
-    }
+    startGame(controller, view, mainLayout, readDataFromFile(getFile(filePath).get))
 
     scoreLabel.visible = true
     hintButton.visible = true
-
-    startGame(controller, view, mainLayout, gridData)
   }
 
-  private def createFileName(difficulty: String, selectedLevel: String) : String = {
-    if(selectedLevel.equals("Random"))
+  private def createFileName(difficulty: String, selectedLevel: String): String = {
+    if (selectedLevel.equals("Random"))
       difficulty.toLowerCase.concat("_").concat("level_".concat(Random.between(1, 3).toString).toLowerCase)
     else
-      difficulty.toLowerCase.concat("_").concat(selectedLevel.replace(" ","_").toLowerCase)
+      difficulty.toLowerCase.concat("_").concat(selectedLevel.replace(" ", "_").toLowerCase)
   }
 
 
@@ -247,7 +255,9 @@ object MinesweeperApp extends JFXApp3 {
     startButton.disable = true
     scoreLabel.visible = false
     hintButton.visible = false
+
     resetScoreView(controller, scoreLabel)
+
     mainLayout.center = new VBox {
       spacing = 10
       alignment = Pos.Center
@@ -276,19 +286,17 @@ object MinesweeperApp extends JFXApp3 {
     startGame(controller, view, mainLayout, gridData)
   }
 
-  private def readDataFromFile(file: File) : Array[String]  = {
+  def readDataFromFile(file: File): Array[String] = {
     if (file != null) {
       val reader = new BufferedReader(new FileReader(file))
       val gridData = reader.lines().toArray.map(_.toString)
       reader.close()
-
-      println("Loaded grid:")
-      gridData.foreach(println)
-
-      return gridData
+      gridData
+    } else {
+      null
     }
-    null
   }
+
 
   private def startGame(controller: GameController, view: GameView, mainLayout: BorderPane, gridData: Array[String]): Unit = {
     controller.loadGame(gridData)
@@ -342,7 +350,7 @@ object MinesweeperApp extends JFXApp3 {
 
   private def createLevel(mainLayout: BorderPane): Unit = {
     val controller = new GameController()
-    controller.initGrid(5, 5) // Početna mreža 5x5
+    controller.initGrid(5, 5)
 
     val gridPane = new GridPane {
       hgap = 2
@@ -373,14 +381,14 @@ object MinesweeperApp extends JFXApp3 {
 
     actionButton.onAction = _ => {
       optionsComboBox.value.value match {
-        case "Add Row at Beginning"    => controller.addRowBegin()
-        case "Add Row at End"          => controller.addRowEnd()
+        case "Add Row at Beginning" => controller.addRowBegin()
+        case "Add Row at End" => controller.addRowEnd()
         case "Add Column at Beginning" => controller.addColumnBegin()
-        case "Add Column at End"       => controller.addColumnEnd()
+        case "Add Column at End" => controller.addColumnEnd()
         case "Remove Row at Beginning" => controller.removeRowBegin()
-        case "Remove Row at End"       => controller.removeRowEnd()
+        case "Remove Row at End" => controller.removeRowEnd()
         case "Remove Column at Beginning" => controller.removeColumnBegin()
-        case "Remove Column at End"       => controller.removeColumnEnd()
+        case "Remove Column at End" => controller.removeColumnEnd()
         case "Toggle Cell Type" =>
           val row = promptForInt("Enter Row:")
           val col = promptForInt("Enter Column:")
@@ -443,6 +451,7 @@ object MinesweeperApp extends JFXApp3 {
         refreshLevelView(controller, gridPane)
       }
     }
+
 
     mainLayout.center = new VBox {
       spacing = 10
