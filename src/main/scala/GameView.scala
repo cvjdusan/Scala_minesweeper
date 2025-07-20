@@ -6,11 +6,23 @@ import scalafx.scene.layout.GridPane
 
 class GameView(controller: GameController, onGameOver: () => Unit) {
 
-  private var buttonGrid: Array[Array[Button]] = Array.ofDim[Button](0, 0)
+  private val bgYellow = "-fx-background-color: yellow;"
+  private val bgRed = "-fx-background-color: red;"
+  private val bgLightBlue = "-fx-background-color: lightblue;"
+  private val bgGrey = "-fx-background-color: grey;"
+
+  private var buttons: Vector[Vector[Button]] = Vector.empty
 
   def createGrid(rows: Int, columns: Int): GridPane = {
 
-    buttonGrid = Array.ofDim[Button](rows, columns)
+    buttons = Vector.tabulate(rows, columns) { (r, c) =>
+      new Button {
+        prefWidth = 40
+        prefHeight = 40
+        text = ""
+        onMousePressed = event => handleCellClick(r, c, event.getButton)
+      }
+    }
 
     val gridPane = new GridPane {
       hgap = 5
@@ -18,21 +30,11 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
     }
 
     for (row <- 0 until rows; col <- 0 until columns) {
-
-      val button = new Button {
-        prefWidth = 40
-        prefHeight = 40
-        text = ""
-        onMousePressed = event => handleCellClick(row, col, event.getButton)
-      }
-
-      buttonGrid(row)(col) = button
-      gridPane.add(button, col, row)
+      gridPane.add(buttons(row)(col), col, row)
     }
 
     gridPane
   }
-
 
   private def handleCellClick(row: Int, col: Int, button: MouseButton): Unit = {
 
@@ -54,7 +56,7 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
 
 
       case MouseButton.SECONDARY =>
-        val currentButton = buttonGrid(row)(col)
+        val currentButton = buttons(row)(col)
         if (!cell.isRevealed) {
           if (Option(currentButton.text.value).getOrElse("") == "🚩") {
             currentButton.text = ""
@@ -67,25 +69,25 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
     }
 
 
-    buttonGrid(row)(col).scene().getRoot.requestFocus()
+    buttons(row)(col).scene().getRoot.requestFocus()
   }
 
   def updateView(grid: Vector[Vector[GameCell]], isGameOver: Boolean): Unit = {
     for (row <- grid.indices; col <- grid(row).indices) {
       val cell = grid(row)(col)
-      val button = buttonGrid(row)(col)
+      val button = buttons(row)(col)
 
       if (cell.isRevealed) {
         button.disable = true
         if (cell.isMine) {
           button.text = "💣"
-          button.style = "-fx-background-color: red;"
+          button.style = bgRed
         } else if (cell.adjacent > 0) {
           button.text = cell.adjacent.toString
-          button.style = "-fx-background-color: lightblue;"
+          button.style = bgLightBlue
         } else {
           button.text = ""
-          button.style = "-fx-background-color: grey;"
+          button.style = bgGrey
         }
       }
 
@@ -93,18 +95,8 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
     }
   }
 
-
-  def resetGrid(): Unit = {
-    buttonGrid.foreach(_.foreach { button =>
-      button.text = ""
-      button.disable = false
-      button.style = ""
-    })
-  }
-
   def markSuggestedMove(row: Int, col: Int): Unit = {
-    buttonGrid(row)(col).style = "-fx-background-color: yellow;"
+    buttons(row)(col).style = bgYellow
   }
-
 
 }
