@@ -38,8 +38,10 @@ class GameController() {
   private def cellAt(r: Int, c: Int): Option[GameCell] =
     if (inBounds(r, c)) Some(grid(r)(c)) else None
 
-  private def update(r: Int, c: Int)(f: GameCell => GameCell): Unit =
-    grid = grid.updated(r, grid(r).updated(c, f(grid(r)(c))))
+  private def updateCellAt(r: Int, c: Int)(f: GameCell => GameCell): Unit =
+    grid = grid
+      .updated(r, grid(r)
+        .updated(c, f(grid(r)(c))))
 
   // ---------------------------------------------------------------------------
   //  INIT
@@ -78,20 +80,24 @@ class GameController() {
   // ---------------------------------------------------------------------------
   //  NEIGHBOURS & ADJACENT COUNT
   // ---------------------------------------------------------------------------
-  private def neighbours(r: Int, c: Int): Seq[(Int, Int)] =
-    for {
-      dr <- -1 to 1
-      dc <- -1 to 1
-      if !(dr == 0 && dc == 0)
-      nr = r + dr; nc = c + dc
-      if inBounds(nr, nc)
-    } yield (nr, nc)
+
+  private val neighboursVector = Vector(
+    (-1,-1), (-1,0), (-1,1),
+    (0,-1),         (0,1),
+    (1,-1), (1,0),  (1,1)
+  )
+
+  private def getNeighbours(r: Int, c: Int): Vector[(Int, Int)] =
+    neighboursVector.collect {
+      case (dr, dc)
+        if inBounds(r + dr, c + dc) => (r + dr, c + dc)
+    }
 
   private def recalculateAdjacent(): Unit =
     grid = grid.zipWithIndex.map { case (row, r) =>
       row.zipWithIndex.map { case (cell, c) =>
         if (cell.isMine) cell
-        else cell.copy(adjacent = neighbours(r, c).count { case (nr, nc) => grid(nr)(nc).isMine })
+        else cell.copy(adjacentMines = getNeighbours(r, c).count { case (nr, nc) => grid(nr)(nc).isMine })
       }
     }
 
@@ -104,7 +110,7 @@ class GameController() {
 
   def getGrid: Vector[Vector[GameCell]] = grid
 
-  def getMineCount(r: Int, c: Int): Int = grid(r)(c).adjacent
+  def getMineCount(r: Int, c: Int): Int = grid(r)(c).adjacentMines
 
   // ---------------------------------------------------------------------------
   //  LOAD/SAVE
@@ -171,9 +177,9 @@ class GameController() {
   // ---------------------------------------------------------------------------
   def revealCell(r: Int, c: Int): Unit = cellAt(r, c) match {
     case Some(cell) if !cell.isRevealed && !cell.isMine =>
-      update(r, c)(_.copy(isRevealed = true))
-      if (cell.adjacent == 0)
-        neighbours(r, c).foreach { case (nr, nc) => revealCell(nr, nc) }
+      updateCellAt(r, c)(_.copy(isRevealed = true)) //cell => cell.copy(isRevealed = true)
+      if (cell.adjacentMines == 0)
+        getNeighbours(r, c).foreach { case (nr, nc) => revealCell(nr, nc) }
     case _ => ()
   }
 
@@ -182,7 +188,7 @@ class GameController() {
       r <- grid.indices
       c <- grid(r).indices
       if grid(r)(c).isMine
-    } update(r, c)(_.copy(isRevealed = true))
+    } updateCellAt(r, c)(_.copy(isRevealed = true))
 
   // ---------------------------------------------------------------------------
   //  LEVEL EDITING
@@ -207,14 +213,14 @@ class GameController() {
   def removeColumnEnd(): Unit = if (cols > 1) grid = grid.map(_.init)
 
   def toggleCellType(r: Int, c: Int): Unit =
-    cellAt(r, c).foreach(cell => update(r, c)(_.copy(isMine = !cell.isMine)))
+    cellAt(r, c).foreach(cell => updateCellAt(r, c)(_.copy(isMine = !cell.isMine)))
 
-  def clearSector(tlr: Int, tlc: Int, brr: Int, brc: Int): Unit =
+  def clearSector(topLeftRow: Int, topLeftCol: Int, bottomRightRow: Int, bottomRightCol: Int): Unit =
     for {
-      r <- tlr to brr
-      c <- tlc to brc
+      r <- topLeftRow to bottomRightRow
+      c <- topLeftCol to bottomRightCol
       if inBounds(r, c)
-    } update(r, c)(_.copy(isMine = false))
+    } updateCellAt(r, c)(_.copy(isMine = false))
 
   // ---------------------------------------------------------------------------
   //  HINTS

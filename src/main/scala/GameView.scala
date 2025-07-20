@@ -82,8 +82,8 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
         if (cell.isMine) {
           button.text = "💣"
           button.style = bgRed
-        } else if (cell.adjacent > 0) {
-          button.text = cell.adjacent.toString
+        } else if (cell.adjacentMines > 0) {
+          button.text = cell.adjacentMines.toString
           button.style = bgLightBlue
         } else {
           button.text = ""
