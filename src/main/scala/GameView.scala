@@ -43,14 +43,16 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
     button match {
       case MouseButton.PRIMARY =>
         controller.incrementClickCount()
-        if (cell.isMine) {
+        if(cell.isFlagged) {
+          // do nothing
+        }
+        else if (cell.isMine) {
           // reveal all
           controller.revealAllMines()
           updateView(controller.getGrid, isGameOver = true)
           onGameOver()
         } else {
-          // reveal cell and neighbours without mines
-          controller.revealCell(row, col)
+          controller.revealCellAndNeigboursWithoutMines(row, col)
           updateView(controller.getGrid, isGameOver = false)
         }
 
@@ -63,6 +65,7 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
           } else {
             currentButton.text = "🚩"
           }
+          controller.toggleFlag(row, col)
         }
 
       case _ =>

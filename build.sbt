@@ -4,6 +4,7 @@ ThisBuild / scalaVersion := "2.13.14"
 lazy val root = (project in file("."))
   .settings(
     name := "ScalaFX-Demo",
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.17" % Test,
     libraryDependencies += "org.scalafx" %% "scalafx" % "16.0.0-R24",
       libraryDependencies ++= {
       // Determine OS version of JavaFX binaries

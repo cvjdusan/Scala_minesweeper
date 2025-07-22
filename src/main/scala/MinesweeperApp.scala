@@ -86,7 +86,6 @@ object MinesweeperApp extends JFXApp3 {
           case Some((row, col)) =>
 
             view.markSuggestedMove(row, col)
-            controller.decreaseScore(5)
             updateScoreLabel(controller, scoreLabel)
 
           case None =>
@@ -392,7 +391,7 @@ object MinesweeperApp extends JFXApp3 {
         case "Toggle Cell Type" =>
           val row = promptForInt("Enter Row:")
           val col = promptForInt("Enter Column:")
-          controller.toggleCellType(row, col)
+          controller.toggleMine(row, col)
         case "Clear Sector" =>
           val topLeftRow = promptForInt("Enter Top-Left Row:")
           val topLeftCol = promptForInt("Enter Top-Left Column:")

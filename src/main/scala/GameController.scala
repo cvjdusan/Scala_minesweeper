@@ -93,7 +93,7 @@ class GameController() {
         if inBounds(r + dr, c + dc) => (r + dr, c + dc)
     }
 
-  private def recalculateAdjacent(): Unit =
+  def recalculateAdjacent(): Unit =
     grid = grid.zipWithIndex.map { case (row, r) =>
       row.zipWithIndex.map { case (cell, c) =>
         if (cell.isMine) cell
@@ -147,8 +147,8 @@ class GameController() {
   }
 
   def playMoves(seq: Seq[String]): Unit = seq.foreach {
-    case Move.Left(r, c) => revealCell(r - 1, c - 1)
-    case Move.Right(r, c) => toggleCellType(r - 1, c - 1)
+    case Move.Left(r, c) => revealCellAndNeigboursWithoutMines(r - 1, c - 1)
+    case Move.Right(r, c) => toggleFlag(r - 1, c - 1)
     case _ => ()
   }
 
@@ -175,11 +175,11 @@ class GameController() {
   // ---------------------------------------------------------------------------
   //  GAMEPLAY
   // ---------------------------------------------------------------------------
-  def revealCell(r: Int, c: Int): Unit = cellAt(r, c) match {
-    case Some(cell) if !cell.isRevealed && !cell.isMine =>
+  def revealCellAndNeigboursWithoutMines(r: Int, c: Int): Unit = cellAt(r, c) match {
+    case Some(cell) if !cell.isRevealed && !cell.isMine && !cell.isFlagged =>
       updateCellAt(r, c)(_.copy(isRevealed = true)) //cell => cell.copy(isRevealed = true)
       if (cell.adjacentMines == 0)
-        getNeighbours(r, c).foreach { case (nr, nc) => revealCell(nr, nc) }
+        getNeighbours(r, c).foreach { case (nr, nc) => revealCellAndNeigboursWithoutMines(nr, nc) }
     case _ => ()
   }
 
@@ -212,8 +212,13 @@ class GameController() {
 
   def removeColumnEnd(): Unit = if (cols > 1) grid = grid.map(_.init)
 
-  def toggleCellType(r: Int, c: Int): Unit =
+  // used for creating levels
+  def toggleMine(r: Int, c: Int): Unit =
     cellAt(r, c).foreach(cell => updateCellAt(r, c)(_.copy(isMine = !cell.isMine)))
+
+  def toggleFlag(r: Int, c: Int): Unit = cellAt(r, c).foreach(cell =>
+    updateCellAt(r, c)(_.copy(isFlagged = !cell.isFlagged))
+  )
 
   def clearSector(topLeftRow: Int, topLeftCol: Int, bottomRightRow: Int, bottomRightCol: Int): Unit =
     for {
@@ -231,13 +236,14 @@ class GameController() {
       c <- grid(r).indices
       pos = (r, c)
       cell = grid(r)(c)
-      if !cell.isRevealed && !cell.isMine && !suggested(pos)
+      if !cell.isRevealed && !cell.isFlagged && !cell.isMine && !suggested(pos)
     } yield pos
 
     if (candidates.isEmpty) None
     else {
       val pick = candidates(Random.nextInt(candidates.size))
       suggested += pick
+      decreaseScore(5)
       Some(pick)
     }
   }
