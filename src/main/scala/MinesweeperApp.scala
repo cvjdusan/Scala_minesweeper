@@ -34,8 +34,7 @@ object MinesweeperApp extends JFXApp3 {
 
     val showGameOverMessage: () => Unit = () => {
 
-      // end it in controller
-      val result = controller.endGameSuccessfully()
+      val result = controller.endGame()
 
       result.foreach { case (initialScore, timeSpent, clicks, finalScore) =>
         val playerName = "Player 1"
@@ -58,7 +57,32 @@ object MinesweeperApp extends JFXApp3 {
       }
     }
 
-    val view = new GameView(controller, showGameOverMessage)
+    val showGameWonMessage: () => Unit = () => {
+
+      val result = controller.endGame()
+
+      result.foreach { case (initialScore, timeSpent, clicks, finalScore) =>
+        val playerName = "Player 1"
+
+        // update results
+        updateResults(playerName, finalScore)
+
+        new Alert(AlertType.Information) {
+          title = "Congrats!"
+          headerText = "You have won!"
+          contentText =
+            s"""
+               |Initial Score: $initialScore
+               |Time Spent: $timeSpent seconds
+               |Clicks: $clicks
+               |Final Score: $finalScore
+               |""".stripMargin
+        }.showAndWait()
+
+      }
+    }
+
+    val view = new GameView(controller, showGameOverMessage, showGameWonMessage)
 
     // actions
 
@@ -217,7 +241,16 @@ object MinesweeperApp extends JFXApp3 {
     val fileName = createFileName(selectedDifficulty, selectedLevel)
     val filePath = filesPath + fileName + fileExtension
 
-    startGame(controller, view, mainLayout, readDataFromFile(getFile(filePath).get))
+    readDataFromFile(getFile(filePath).get) match {
+      case Right(gridData) =>
+        startGame(controller, view, mainLayout, gridData)
+      case Left(error) =>
+        new Alert(AlertType.Error) {
+          title = "Load Error"
+          headerText = "Failed to read level file"
+          contentText = s"Error: $error"
+        }.showAndWait()
+    }
 
     scoreLabel.visible = true
     hintButton.visible = true
@@ -278,34 +311,55 @@ object MinesweeperApp extends JFXApp3 {
       title = "Load Game"
       extensionFilters.add(new FileChooser.ExtensionFilter("Game Files", "*.txt"))
     }
-    val file: File = fileChooser.showOpenDialog(stage)
-    val gridData = readDataFromFile(file)
-    scoreLabel.visible = true
-    hintButton.visible = true
-    startGame(controller, view, mainLayout, gridData)
+    Option(fileChooser.showOpenDialog(stage)).foreach { file =>
+      readDataFromFile(file) match {
+        case Right(gridData) =>
+          scoreLabel.visible = true
+          hintButton.visible = true
+          startGame(controller, view, mainLayout, gridData)
+        case Left(error) =>
+          new Alert(AlertType.Error) {
+            title = "Load Error"
+            headerText = "Failed to load game"
+            contentText = s"Error: $error"
+          }.showAndWait()
+      }
+    }
   }
 
-  def readDataFromFile(file: File): Array[String] = {
-    if (file != null) {
-      val reader = new BufferedReader(new FileReader(file))
-      val gridData = reader.lines().toArray.map(_.toString)
-      reader.close()
-      gridData
+  def readDataFromFile(file: File): Either[String, Array[String]] = {
+    if (file == null) {
+      Left("No file selected")
     } else {
-      null
+      Try {
+        val reader = new BufferedReader(new FileReader(file))
+        val gridData = reader.lines().toArray.map(_.toString)
+        reader.close()
+        gridData
+      }.toEither.left.map(_.getMessage)
     }
   }
 
 
   private def startGame(controller: GameController, view: GameView, mainLayout: BorderPane, gridData: Array[String]): Unit = {
-    controller.loadGame(gridData)
-    controller.startGameTime()
-    controller.initScore()
+    Try {
+      controller.loadGame(gridData)
+      controller.startGameTime()
+      controller.initScore()
 
-    val gridPane = view.createGrid(gridData.length, gridData(0).length)
+      val gridPane = view.createGrid(gridData.length, gridData(0).length)
 
-    view.updateView(controller.getGrid, isGameOver = false)
-    mainLayout.center = gridPane
+      view.updateView(controller.getGrid, isGameOver = false)
+      mainLayout.center = gridPane
+    } match {
+      case Success(_) => // Game started successfully
+      case Failure(exception) =>
+        new Alert(AlertType.Error) {
+          title = "Game Start Error"
+          headerText = "Failed to start game"
+          contentText = s"Error: ${exception.getMessage}"
+        }.showAndWait()
+    }
   }
 
   private def refreshLevelView(controller: GameController, gridPane: GridPane): Unit = {
@@ -495,11 +549,22 @@ object MinesweeperApp extends JFXApp3 {
       extensionFilters.add(new FileChooser.ExtensionFilter("Text Files", "*.txt"))
     }
     Option(chooser.showSaveDialog(stage)).foreach { file =>
-      controller.saveGame(file.toPath)
-      new Alert(AlertType.Information) {
-        title = "Saved"
-        headerText = "Game saved successfully."
-      }.showAndWait()
+      // Using functional approach with proper error handling
+      Try {
+        controller.saveGame(file.toPath)
+      } match {
+        case Success(_) =>
+          new Alert(AlertType.Information) {
+            title = "Saved"
+            headerText = "Game saved successfully."
+          }.showAndWait()
+        case Failure(exception) =>
+          new Alert(AlertType.Error) {
+            title = "Save Error"
+            headerText = "Failed to save game"
+            contentText = s"Error: ${exception.getMessage}"
+          }.showAndWait()
+      }
     }
   }
 
@@ -509,9 +574,23 @@ object MinesweeperApp extends JFXApp3 {
       extensionFilters.add(new FileChooser.ExtensionFilter("Text Files", "*.txt"))
     }
     Option(chooser.showOpenDialog(stage)).foreach { file =>
-      val moves = scala.io.Source.fromFile(file).getLines().toSeq
-      controller.playMoves(moves)
-      view.updateView(controller.getGrid, isGameOver = false)
+      Try {
+        val moves = scala.io.Source.fromFile(file).getLines().toSeq
+        controller.playMoves(moves)
+        view.updateView(controller.getGrid, isGameOver = false)
+      } match {
+        case Success(_) =>
+          new Alert(AlertType.Information) {
+            title = "Moves Played"
+            headerText = "Move sequence executed successfully."
+          }.showAndWait()
+        case Failure(exception) =>
+          new Alert(AlertType.Error) {
+            title = "Play Moves Error"
+            headerText = "Failed to execute moves"
+            contentText = s"Error: ${exception.getMessage}"
+          }.showAndWait()
+      }
     }
   }
 

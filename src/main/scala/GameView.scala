@@ -4,7 +4,7 @@ import model.GameCell
 import scalafx.scene.layout.GridPane
 
 
-class GameView(controller: GameController, onGameOver: () => Unit) {
+class GameView(controller: GameController, onGameOver: () => Unit, onGameWin: () => Unit) {
 
   private val bgYellow = "-fx-background-color: yellow;"
   private val bgRed = "-fx-background-color: red;"
@@ -54,6 +54,9 @@ class GameView(controller: GameController, onGameOver: () => Unit) {
         } else {
           controller.revealCellAndNeigboursWithoutMines(row, col)
           updateView(controller.getGrid, isGameOver = false)
+          if (controller.isWin) {
+            onGameWin()
+          }
         }
 
 
