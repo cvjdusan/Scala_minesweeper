@@ -7,36 +7,9 @@ import java.time.Instant
 
 class GameController() {
 
-  // ---------------------------------------------------------------------------
-
-  private var gameState: GameState = GameState.empty
-
-  private def grid: Vector[Vector[GameCell]] = gameState.grid
-
-  private def score: Long = gameState.score
-
-  private val MineChar = '#'
-  private val FlagChar = 'F'
-  private val RevealChar = 'R'
-  private val HiddenChar = '-'
-
-  // ---------------------------------------------------------------------------
-  // HELPERS
-  // ---------------------------------------------------------------------------
-  private def rows: Int = gameState.rows
-
-  private def cols: Int = gameState.cols
-
-  def isWin: Boolean = grid.flatten.forall(cell => cell.isRevealed || cell.isMine)
-
-
-  // ---------------------------------------------------------------------------
-  //  INIT
-  // ---------------------------------------------------------------------------
-
-  def initGrid(r: Int, c: Int): Unit = {
+  def initGrid(r: Int, c: Int): GameState = {
     val newGrid = GameLogic.initGridWithoutMines(r, c)
-    gameState = gameState.copy(
+    GameState.empty.copy(
       grid = newGrid,
       clickCount = 0,
       levelCompleted = false,
@@ -44,75 +17,150 @@ class GameController() {
     )
   }
 
-  def startGameTime(): Unit = {
-    gameState = gameState.withStartTime(Instant.now())
+  def startGameTime(state: GameState): GameState = {
+    state.withStartTime(Instant.now())
   }
 
-  def initScore(): Unit = {
-    gameState = gameState.withScore(1000)
+  def initScore(state: GameState): GameState = {
+    state.withScore(1000)
   }
 
-  // ---------------------------------------------------------------------------
-  //  METRICS
-  // ---------------------------------------------------------------------------
-  def incrementClickCount(): Unit = {
-    gameState = gameState.incrementClickCount
+  def incrementClickCount(state: GameState): GameState = {
+    state.incrementClickCount
   }
 
-  def getScore: Long = score
-
-  def decreaseScore(amount: Int): Unit = {
-    gameState = gameState.decreaseScore(amount)
+  def decreaseScore(state: GameState, amount: Int): GameState = {
+    state.decreaseScore(amount)
   }
 
-  def endGame(): Option[(Long, Long, Int, Long)] = {
-    GameLogic.calculateFinalScore(gameState).map { result =>
-      gameState = gameState.withLevelCompleted
-      result
+  def endGame(state: GameState): Option[(Long, Long, Int, Long)] = {
+    GameLogic.calculateFinalScore(state).map { result =>
+      (result, state.withLevelCompleted)
+    }.map { case (result, newState) =>
+      (result, newState)
+    }.map(_._1)
+  }
+
+  def recalculateAdjacent(state: GameState): GameState = {
+    val newGrid = GridOperations.recalculateAdjacent(state.grid)
+    state.withGrid(newGrid)
+  }
+
+  def revealCellAndNeighbors(state: GameState, r: Int, c: Int): GameState = {
+    val newGrid = GameLogic.revealCellAndNeighbors(state.grid, r, c)
+    state.withGrid(newGrid)
+  }
+
+  def revealAllMines(state: GameState): GameState = {
+    val newGrid = GameLogic.revealAllMines(state.grid)
+    state.withGrid(newGrid)
+  }
+
+  def toggleMine(state: GameState, r: Int, c: Int): GameState = {
+    val newGrid = GridOperations.toggleMine(state.grid, r, c)
+    state.withGrid(newGrid)
+  }
+
+  def toggleFlag(state: GameState, r: Int, c: Int): GameState = {
+    val newGrid = GridOperations.toggleFlag(state.grid, r, c)
+    state.withGrid(newGrid)
+  }
+
+  def suggestMove(state: GameState): (Option[(Int, Int)], GameState) = {
+    GameLogic.suggestMove(state) match {
+      case Some(move) =>
+        val newState = state.addSuggested(move).decreaseScore(5)
+        (Some(move), newState)
+      case None => (None, state)
     }
   }
 
-  // ---------------------------------------------------------------------------
-  //  NEIGHBOURS & ADJACENT COUNT
-  // ---------------------------------------------------------------------------
-
-  def recalculateAdjacent(): Unit = {
-    val newGrid = GridOperations.recalculateAdjacent(grid)
-    gameState = gameState.withGrid(newGrid)
+  def applyIsometry(state: GameState, iso: Isometry): GameState = {
+    val transformedGrid = iso(state.grid)
+    val recalculatedGrid = GridOperations.recalculateAdjacent(transformedGrid)
+    state.withGrid(recalculatedGrid)
   }
 
-  // ---------------------------------------------------------------------------
-  //  PUBLIC ACCESSORS
-  // ---------------------------------------------------------------------------
+  def addRowBegin(state: GameState): GameState = {
+    val emptyRow = Vector.fill(state.cols)(GameCell(false))
+    val newGrid = emptyRow +: state.grid
+    state.withGrid(newGrid)
+  }
 
-  def getCell(r: Int, c: Int): GameCell = grid(r)(c)
+  def addRowEnd(state: GameState): GameState = {
+    val emptyRow = Vector.fill(state.cols)(GameCell(false))
+    val newGrid = state.grid :+ emptyRow
+    state.withGrid(newGrid)
+  }
 
-  def getGrid: Vector[Vector[GameCell]] = grid
+  def addColumnBegin(state: GameState): GameState = {
+    val newGrid = state.grid.map(row => GameCell(false) +: row)
+    state.withGrid(newGrid)
+  }
 
-  // ---------------------------------------------------------------------------
-  //  LOAD/SAVE
-  // ---------------------------------------------------------------------------
-  def saveGame(path: Path): Unit = {
-    GameIO.saveGame(gameState, path) match {
-      case Right(_) => // Success - do nothing
-      case Left(error) => throw new RuntimeException(s"Failed to save game: $error")
+  def addColumnEnd(state: GameState): GameState = {
+    val newGrid = state.grid.map(row => row :+ GameCell(false))
+    state.withGrid(newGrid)
+  }
+
+  def removeRowBegin(state: GameState): GameState = {
+    if (state.rows > 1) {
+      val newGrid = state.grid.tail
+      state.withGrid(newGrid)
+    } else state
+  }
+
+  def removeRowEnd(state: GameState): GameState = {
+    if (state.rows > 1) {
+      val newGrid = state.grid.init
+      state.withGrid(newGrid)
+    } else state
+  }
+
+  def removeColumnBegin(state: GameState): GameState = {
+    if (state.cols > 1) {
+      val newGrid = state.grid.map(_.tail)
+      state.withGrid(newGrid)
+    } else state
+  }
+
+  def removeColumnEnd(state: GameState): GameState = {
+    if (state.cols > 1) {
+      val newGrid = state.grid.map(_.init)
+      state.withGrid(newGrid)
+    } else state
+  }
+
+  def clearSector(state: GameState, topLeftRow: Int, topLeftCol: Int, bottomRightRow: Int, bottomRightCol: Int): GameState = {
+    val newGrid = (topLeftRow to bottomRightRow).foldLeft(state.grid) { case (grid, r) =>
+      (topLeftCol to bottomRightCol).foldLeft(grid) { case (g, c) =>
+        if (GridOperations.inBounds(g, r, c)) {
+          GridOperations.updateCell(g, r, c)(_.copy(isMine = false))
+        } else g
+      }
     }
+    state.withGrid(newGrid)
   }
 
-  def loadGame(lines: Array[String]): Unit = {
-    GameIO.loadGame(lines) match {
-      case Right(newGrid) =>
-        val recalculatedGrid = GridOperations.recalculateAdjacent(newGrid)
-        gameState = gameState.withGrid(recalculatedGrid)
-      case Left(error) =>
-        throw new RuntimeException(s"Failed to load game: $error")
+  def loadGame(state: GameState, lines: Array[String]): Either[String, GameState] = {
+    GameIO.loadGame(lines).map { newGrid =>
+      val recalculatedGrid = GridOperations.recalculateAdjacent(newGrid)
+      state.withGrid(recalculatedGrid)
+    }.left.map(_.toString)
+  }
+
+  def saveGame(state: GameState, path: Path): Either[String, Unit] = {
+    GameIO.saveGame(state, path).left.map(_.toString)
+  }
+
+  def playMoves(state: GameState, seq: Seq[String]): GameState = {
+    seq.foldLeft(state) { case (currentState, move) =>
+      move match {
+        case Move.Left(r, c) => revealCellAndNeighbors(currentState, r - 1, c - 1)
+        case Move.Right(r, c) => toggleFlag(currentState, r - 1, c - 1)
+        case _ => currentState
+      }
     }
-  }
-
-  def playMoves(seq: Seq[String]): Unit = seq.foreach {
-    case Move.Left(r, c) => revealCellAndNeigboursWithoutMines(r - 1, c - 1)
-    case Move.Right(r, c) => toggleFlag(r - 1, c - 1)
-    case _ => ()
   }
 
   private object Move {
@@ -134,108 +182,13 @@ class GameController() {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  //  GAMEPLAY
-  // ---------------------------------------------------------------------------
-
-  def revealCellAndNeigboursWithoutMines(r: Int, c: Int): Unit = {
-    val newGrid = GameLogic.revealCellAndNeighbors(grid, r, c)
-    gameState = gameState.withGrid(newGrid)
-  }
-
-  def revealAllMines(): Unit = {
-    val newGrid = GameLogic.revealAllMines(grid)
-    gameState = gameState.withGrid(newGrid)
-  }
-
-  // ---------------------------------------------------------------------------
-  //  LEVEL EDITING
-  // ---------------------------------------------------------------------------
-  private def emptyRow: Vector[GameCell] = Vector.fill(cols)(GameCell(false))
-
-  // row / column operations
-  def addRowBegin(): Unit = {
-    val newGrid = emptyRow +: grid
-    gameState = gameState.withGrid(newGrid)
-  }
-
-  def addRowEnd(): Unit = {
-    val newGrid = grid :+ emptyRow
-    gameState = gameState.withGrid(newGrid)
-  }
-
-  def addColumnBegin(): Unit = {
-    val newGrid = grid.map(row => GameCell(false) +: row)
-    gameState = gameState.withGrid(newGrid)
-  }
-
-  def addColumnEnd(): Unit = {
-    val newGrid = grid.map(row => row :+ GameCell(false))
-    gameState = gameState.withGrid(newGrid)
-  }
-
-  def removeRowBegin(): Unit = if (rows > 1) {
-    val newGrid = grid.tail
-    gameState = gameState.withGrid(newGrid)
-  }
-
-  def removeRowEnd(): Unit = if (rows > 1) {
-    val newGrid = grid.init
-    gameState = gameState.withGrid(newGrid)
-  }
-
-  def removeColumnBegin(): Unit = if (cols > 1) {
-    val newGrid = grid.map(_.tail)
-    gameState = gameState.withGrid(newGrid)
-  }
-
-  def removeColumnEnd(): Unit = if (cols > 1) {
-    val newGrid = grid.map(_.init)
-    gameState = gameState.withGrid(newGrid)
-  }
-
-  // used for creating levels
-  def toggleMine(r: Int, c: Int): Unit = {
-    val newGrid = GridOperations.toggleMine(grid, r, c)
-    gameState = gameState.withGrid(newGrid)
-  }
-
-  def toggleFlag(r: Int, c: Int): Unit = {
-    val newGrid = GridOperations.toggleFlag(grid, r, c)
-    gameState = gameState.withGrid(newGrid)
-  }
-
-  def clearSector(topLeftRow: Int, topLeftCol: Int, bottomRightRow: Int, bottomRightCol: Int): Unit = {
-    var newGrid = grid
-    for {
-      r <- topLeftRow to bottomRightRow
-      c <- topLeftCol to bottomRightCol
-      if GridOperations.inBounds(newGrid, r, c)
-    } {
-      newGrid = GridOperations.updateCell(newGrid, r, c)(_.copy(isMine = false))
-    }
-    gameState = gameState.withGrid(newGrid)
-  }
-
-  // ---------------------------------------------------------------------------
-  //  HINTS
-  // ---------------------------------------------------------------------------
-  def suggestMove(): Option[(Int, Int)] = {
-    GameLogic.suggestMove(gameState) match {
-      case Some(move) =>
-        gameState = gameState.addSuggested(move).decreaseScore(5)
-        Some(move)
-      case None => None
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  //  ISOMETRY
-  // ---------------------------------------------------------------------------
-  def applyIsometry(iso: Isometry): Unit = {
-    val transformedGrid = iso(grid)
-    val recalculatedGrid = GridOperations.recalculateAdjacent(transformedGrid)
-    gameState = gameState.withGrid(recalculatedGrid)
-  }
+  def getCell(state: GameState, r: Int, c: Int): GameCell = state.grid(r)(c)
+  def getGrid(state: GameState): Vector[Vector[GameCell]] = state.grid
+  def getScore(state: GameState): Long = state.score
+  def getClickCount(state: GameState): Int = state.clickCount
+  def isWin(state: GameState): Boolean = state.grid.flatten.forall(cell => cell.isRevealed || cell.isMine)
+  def rows(state: GameState): Int = state.rows
+  def cols(state: GameState): Int = state.cols
+  def inBounds(state: GameState, r: Int, c: Int): Boolean = r >= 0 && r < state.rows && c >= 0 && c < state.cols
 
 }

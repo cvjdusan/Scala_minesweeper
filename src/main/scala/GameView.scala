@@ -14,7 +14,6 @@ class GameView(controller: GameController, onGameOver: () => Unit, onGameWin: ()
   private var buttons: Vector[Vector[Button]] = Vector.empty
 
   def createGrid(rows: Int, columns: Int): GridPane = {
-
     buttons = Vector.tabulate(rows, columns) { (r, c) =>
       new Button {
         prefWidth = 40
@@ -37,28 +36,30 @@ class GameView(controller: GameController, onGameOver: () => Unit, onGameWin: ()
   }
 
   private def handleCellClick(row: Int, col: Int, button: MouseButton): Unit = {
-
-    val cell = controller.getCell(row, col)
+    val currentState = Game.get
+    val cell = controller.getCell(currentState, row, col)
 
     button match {
       case MouseButton.PRIMARY =>
-        controller.incrementClickCount()
+        val newState = controller.incrementClickCount(currentState)
+        Game.set(newState)
+
         if(cell.isFlagged) {
           // do nothing
         }
         else if (cell.isMine) {
-          // reveal all
-          controller.revealAllMines()
-          updateView(controller.getGrid, isGameOver = true)
+          val finalState = controller.revealAllMines(currentState)
+          Game.set(finalState)
+          updateView(controller.getGrid(finalState), isGameOver = true)
           onGameOver()
         } else {
-          controller.revealCellAndNeigboursWithoutMines(row, col)
-          updateView(controller.getGrid, isGameOver = false)
-          if (controller.isWin) {
+          val newState = controller.revealCellAndNeighbors(currentState, row, col)
+          Game.set(newState)
+          updateView(controller.getGrid(newState), isGameOver = false)
+          if (controller.isWin(newState)) {
             onGameWin()
           }
         }
-
 
       case MouseButton.SECONDARY =>
         val currentButton = buttons(row)(col)
@@ -68,12 +69,12 @@ class GameView(controller: GameController, onGameOver: () => Unit, onGameWin: ()
           } else {
             currentButton.text = "🚩"
           }
-          controller.toggleFlag(row, col)
+          val newState = controller.toggleFlag(currentState, row, col)
+          Game.set(newState)
         }
 
       case _ =>
     }
-
 
     buttons(row)(col).scene().getRoot.requestFocus()
   }
@@ -95,6 +96,8 @@ class GameView(controller: GameController, onGameOver: () => Unit, onGameWin: ()
           button.text = ""
           button.style = bgGrey
         }
+      } else if(cell.isFlagged) {
+        button.text = "🚩"
       }
 
       if (isGameOver) button.disable = true
@@ -103,6 +106,10 @@ class GameView(controller: GameController, onGameOver: () => Unit, onGameWin: ()
 
   def markSuggestedMove(row: Int, col: Int): Unit = {
     buttons(row)(col).style = bgYellow
+  }
+
+  def isGameLost(state: GameState): Boolean = {
+    state.grid.flatten.exists(cell => cell.isRevealed && cell.isMine)
   }
 
 }
