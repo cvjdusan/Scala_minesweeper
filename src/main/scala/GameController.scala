@@ -154,14 +154,25 @@ class GameController() {
   }
 
   def playMoves(state: GameState, seq: Seq[String]): GameState = {
-    seq.foldLeft(state) { case (currentState, move) =>
-      move match {
-        case Move.Left(r, c) => revealCellAndNeighbors(currentState, r - 1, c - 1)
-        case Move.Right(r, c) => toggleFlag(currentState, r - 1, c - 1)
-        case _ => currentState
-      }
+    seq.foldLeft(state) {
+      case (currentState, move) =>
+        move match {
+          case Move.Left(r, c) =>
+            val cell = getCell(currentState, r - 1, c - 1)
+            if (cell.isMine) {
+              revealAllMines(currentState)
+            } else {
+              revealCellAndNeighbors(currentState, r - 1, c - 1)
+            }
+
+          case Move.Right(r, c) =>
+            toggleFlag(currentState, r - 1, c - 1)
+
+          case _ => currentState
+        }
     }
   }
+
 
   private object Move {
     private val L = """L\((\d+),(\d+)\)""".r

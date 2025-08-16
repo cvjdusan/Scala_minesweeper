@@ -4,7 +4,7 @@ import model.GameCell
 import scalafx.scene.layout.GridPane
 
 
-class GameView(controller: GameController, onGameOver: () => Unit, onGameWin: () => Unit) {
+class GameView(controller: GameController, onGameOver: () => Unit, onGameWin: () => Unit, gameCommit: GameCommit) {
 
   private val bgYellow = "-fx-background-color: yellow;"
   private val bgRed = "-fx-background-color: red;"
@@ -36,48 +36,45 @@ class GameView(controller: GameController, onGameOver: () => Unit, onGameWin: ()
   }
 
   private def handleCellClick(row: Int, col: Int, button: MouseButton): Unit = {
-    val currentState = Game.get
-    val cell = controller.getCell(currentState, row, col)
+    val current = Game.get
+    val cell    = controller.getCell(current, row, col)
 
-    button match {
+    val (nextState, isOver, isWinNow) = button match {
       case MouseButton.PRIMARY =>
-        val newState = controller.incrementClickCount(currentState)
-        Game.set(newState)
-
-        if(cell.isFlagged) {
-          // do nothing
-        }
-        else if (cell.isMine) {
-          val finalState = controller.revealAllMines(currentState)
-          Game.set(finalState)
-          updateView(controller.getGrid(finalState), isGameOver = true)
-          onGameOver()
+        val s1 = controller.incrementClickCount(current)
+        if (cell.isFlagged) {
+          (s1, false, controller.isWin(s1))
+        } else if (cell.isMine) {
+          val s2 = controller.revealAllMines(s1)
+          (s2, true, false)
         } else {
-          val newState = controller.revealCellAndNeighbors(currentState, row, col)
-          Game.set(newState)
-          updateView(controller.getGrid(newState), isGameOver = false)
-          if (controller.isWin(newState)) {
-            onGameWin()
-          }
+          val s2 = controller.revealCellAndNeighbors(s1, row, col)
+          (s2, false, controller.isWin(s2))
         }
 
       case MouseButton.SECONDARY =>
-        val currentButton = buttons(row)(col)
-        if (!cell.isRevealed) {
-          if (Option(currentButton.text.value).getOrElse("") == "🚩") {
-            currentButton.text = ""
-          } else {
-            currentButton.text = "🚩"
-          }
-          val newState = controller.toggleFlag(currentState, row, col)
-          Game.set(newState)
-        }
+        val s1 =
+          if (!cell.isRevealed) controller.toggleFlag(current, row, col)
+          else current
+        (s1, false, controller.isWin(s1))
 
       case _ =>
+        (current, false, controller.isWin(current))
     }
+
+    // Updating Game to next state
+    //gameCommit.update((_, _) => nextState, _ => isOver)
+    Game.set(nextState)
+
+
+    updateView(controller.getGrid(nextState), isGameOver = isOver)
+
+    if (isOver) onGameOver()
+    else if (isWinNow) onGameWin()
 
     buttons(row)(col).scene().getRoot.requestFocus()
   }
+
 
   def updateView(grid: Vector[Vector[GameCell]], isGameOver: Boolean): Unit = {
     for (row <- grid.indices; col <- grid(row).indices) {
@@ -98,7 +95,12 @@ class GameView(controller: GameController, onGameOver: () => Unit, onGameWin: ()
         }
       } else if(cell.isFlagged) {
         button.text = "🚩"
+      } else {
+        button.disable = false
+        button.text = ""
+        button.style = ""
       }
+
 
       if (isGameOver) button.disable = true
     }
@@ -108,8 +110,5 @@ class GameView(controller: GameController, onGameOver: () => Unit, onGameWin: ()
     buttons(row)(col).style = bgYellow
   }
 
-  def isGameLost(state: GameState): Boolean = {
-    state.grid.flatten.exists(cell => cell.isRevealed && cell.isMine)
-  }
 
 }

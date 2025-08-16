@@ -28,6 +28,9 @@ case class GameState
   def rows: Int = grid.length
 
   def cols: Int = if (grid.isEmpty) 0 else grid.head.length
+
+  def isGameLost: Boolean =
+    grid.exists(_.exists(c => c.isRevealed && c.isMine))
 }
 
 object GameState {

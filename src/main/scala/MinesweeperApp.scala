@@ -22,6 +22,7 @@ object MinesweeperApp extends JFXApp3 {
     "Normal" -> Seq("Level 1", "Level 2", "Random"),
     "Advanced" -> Seq("Level 1", "Level 2", "Random")
   )
+  private var commit: GameCommit = _
 
   override def start(): Unit = {
     val controller = new GameController()
@@ -32,8 +33,14 @@ object MinesweeperApp extends JFXApp3 {
 
     val scoreLabel = createScoreLabel(controller)
 
-    lazy val view = new GameView(controller, showGameOverMessage, showGameWinMessage)
+    lazy val view = new GameView(controller, showGameOverMessage, showGameWinMessage, commit)
 
+    commit = new GameCommit(
+      controller,
+      (st, over) => view.updateView(controller.getGrid(st), isGameOver = over),
+      showGameOverMessage,
+      showGameWinMessage
+    )
 
     def showGameOverMessage(): Unit = {
       val result = controller.endGame(Game.get)
@@ -90,9 +97,12 @@ object MinesweeperApp extends JFXApp3 {
     val hintButton = new Button("Hint") {
       visible = false
       onAction = _ => {
-        val (suggestion, newState) = controller.suggestMove(Game.get)
+        val (suggestion, _) = controller.suggestMove(Game.get)
 
-        Game.set(newState)
+        commit.update(
+          (controller, state) => controller.suggestMove(state)._2,
+          state => Game.get.isGameLost
+        )
 
         suggestion.foreach { case (row, col) =>
           view.markSuggestedMove(row, col)
@@ -281,8 +291,7 @@ object MinesweeperApp extends JFXApp3 {
   }
 
   private def resetScoreView(controller: GameController, scoreLabel: Label, view: GameView) = {
-    val newState = controller.initScore(Game.get)
-    Game.set(newState)
+    commit.update((controller, state) => controller.initScore(state))
     updateScoreLabel(controller, scoreLabel, view)
   }
 
@@ -327,11 +336,10 @@ object MinesweeperApp extends JFXApp3 {
         case Left(error) => throw new RuntimeException(error)
       }
 
-      val finalState = controller.startGameTime(newState)
-      Game.set(newState)
+      commit.update((c, s) => controller.startGameTime(newState))
 
       val gridPane = view.createGrid(gridData.length, gridData(0).length)
-      view.updateView(controller.getGrid(finalState), isGameOver = false)
+      view.updateView(controller.getGrid(Game.get), isGameOver = false)
       mainLayout.center = gridPane
     } match {
       case Success(_) => // Game started successfully
@@ -613,9 +621,14 @@ object MinesweeperApp extends JFXApp3 {
     Option(chooser.showOpenDialog(stage)).foreach { file =>
       Try {
         val moves = scala.io.Source.fromFile(file).getLines().toSeq
-        val newState = controller.playMoves(Game.get, moves)
-        Game.set(newState)
-        view.updateView(controller.getGrid(newState), isGameOver = false)
+        println(moves)
+
+        commit.update(
+          (c, s) => c.playMoves(s, moves),
+          st => Game.get.isGameLost
+        )
+
+        view.updateView(controller.getGrid(Game.get), Game.get.isGameLost)
       } match {
         case Success(_) =>
           new Alert(AlertType.Information) {

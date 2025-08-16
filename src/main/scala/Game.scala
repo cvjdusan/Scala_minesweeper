@@ -11,4 +11,5 @@ object Game {
     if (next ne state) state = next
     state
   }
+
 }
