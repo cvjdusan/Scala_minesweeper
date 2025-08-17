@@ -62,15 +62,7 @@ class GameView(controller: GameController, onGameOver: () => Unit, onGameWin: ()
         (current, false, controller.isWin(current))
     }
 
-    // Updating Game to next state
-    //gameCommit.update((_, _) => nextState, _ => isOver)
-    Game.set(nextState)
-
-
-    updateView(controller.getGrid(nextState), isGameOver = isOver)
-
-    if (isOver) onGameOver()
-    else if (isWinNow) onGameWin()
+    gameCommit.update((_, _) => nextState, _ => isOver)
 
     buttons(row)(col).scene().getRoot.requestFocus()
   }
@@ -95,6 +87,8 @@ class GameView(controller: GameController, onGameOver: () => Unit, onGameWin: ()
         }
       } else if(cell.isFlagged) {
         button.text = "🚩"
+      } else if(Game.get.suggested.contains(row, col)) {
+        buttons(row)(col).style = bgYellow
       } else {
         button.disable = false
         button.text = ""

@@ -10,6 +10,7 @@ case class GameState
   levelCompleted: Boolean,
   score: Long,
   suggested: Set[(Int, Int)]
+
 ) {
   def withGrid(newGrid: Vector[Vector[GameCell]]): GameState = copy(grid = newGrid)
 

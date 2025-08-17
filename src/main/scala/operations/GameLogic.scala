@@ -3,6 +3,7 @@ import GridOperations._
 import model.GameCell
 
 import scala.annotation.tailrec
+import scala.util.Random
 
 object GameLogic {
 
@@ -16,12 +17,12 @@ object GameLogic {
         val c = toReveal.head._2
 
         val cell = currentGrid(r)(c)
-        
+
         if (cell.isRevealed || cell.isFlagged || cell.isMine) {
           revealRecursive(currentGrid, toReveal.tail)
         } else {
           val revealedGrid = updateCell(currentGrid, r, c)(_.copy(isRevealed = true))
-          
+
           if (cell.adjacentMines == 0) {
             val neighbors = getNeighbors(revealedGrid, r, c)
             val newToReveal = toReveal.tail ++ neighbors.filter {
@@ -34,7 +35,7 @@ object GameLogic {
         }
       }
     }
-    
+
     revealRecursive(grid, Set((row, col)))
   }
 
@@ -56,10 +57,13 @@ object GameLogic {
     val unrevealedCells = for {
       (cells, row) <- state.grid.zipWithIndex
       (cell, col) <- cells.zipWithIndex
-      if !cell.isRevealed && !cell.isMine && !state.suggested.contains((row, col))
+      if !cell.isRevealed && !cell.isMine && !state.suggested.contains((row, col)) && !cell.isFlagged
     } yield (row, col)
 
-    unrevealedCells.headOption
+    if (unrevealedCells.nonEmpty)
+      Some(unrevealedCells(Random.nextInt(unrevealedCells.size)))
+    else
+      None
   }
 
   def isGameWon(grid: Vector[Vector[GameCell]]): Boolean = {

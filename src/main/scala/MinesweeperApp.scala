@@ -104,11 +104,6 @@ object MinesweeperApp extends JFXApp3 {
           state => Game.get.isGameLost
         )
 
-        suggestion.foreach { case (row, col) =>
-          view.markSuggestedMove(row, col)
-          updateScoreLabel(controller, scoreLabel, view)
-        }
-
         if (suggestion.isEmpty) {
           new Alert(AlertType.Information) {
             title = "Hint"
@@ -331,15 +326,13 @@ object MinesweeperApp extends JFXApp3 {
 
   private def startGame(controller: GameController, view: GameView, mainLayout: BorderPane, gridData: Array[String]): Unit = {
     Try {
-      val newState = controller.loadGame(Game.get, gridData) match {
+      val newState = controller.loadGame(GameState.empty, gridData) match {
         case Right(state) => state
         case Left(error) => throw new RuntimeException(error)
       }
 
-      commit.update((c, s) => controller.startGameTime(newState))
-
       val gridPane = view.createGrid(gridData.length, gridData(0).length)
-      view.updateView(controller.getGrid(Game.get), isGameOver = false)
+      commit.update((c, s) => controller.startGameTime(newState))
       mainLayout.center = gridPane
     } match {
       case Success(_) => // Game started successfully
@@ -628,7 +621,6 @@ object MinesweeperApp extends JFXApp3 {
           st => Game.get.isGameLost
         )
 
-        view.updateView(controller.getGrid(Game.get), Game.get.isGameLost)
       } match {
         case Success(_) =>
           new Alert(AlertType.Information) {
