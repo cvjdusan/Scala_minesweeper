@@ -4,10 +4,13 @@ import scala.util.{Try, Success, Failure}
 import scala.collection.JavaConverters._
 
 object GameIO {
-  
+
   sealed trait GameError
+
   case class FileError(message: String) extends GameError
+
   case class ParseError(message: String) extends GameError
+
   case class ValidationError(message: String) extends GameError
 
   def saveGame(state: GameState, path: Path): Either[GameError, Unit] = {
@@ -27,17 +30,34 @@ object GameIO {
   }
 
   def loadGame(lines: Array[String]): Either[GameError, Vector[Vector[GameCell]]] = {
+    // Remove leading and trailing blank lines
+    val trimmed =
+      lines.dropWhile(_.trim.isEmpty).reverse.dropWhile(_.trim.isEmpty).reverse
+
+    if (trimmed.isEmpty)
+      return Left(ValidationError("No lines provided"))
+
+    // Disallow empty lines inside the grid
+    if (trimmed.exists(_.trim.isEmpty))
+      return Left(ValidationError("Empty line inside grid"))
+
+    // All rows must have the same length
+    val widths = trimmed.map(_.length)
+    if (widths.distinct.size != 1 || widths.head == 0)
+      return Left(ValidationError("Inconsistent row lengths"))
+
+    import scala.util.Try
     Try {
-      lines.map { line =>
+      trimmed.map { line =>
         line.map {
           case '#' => GameCell(isMine = true)
           case '-' => GameCell(isMine = false)
           case 'R' => GameCell(isMine = false, isRevealed = true)
           case 'F' => GameCell(isMine = false, isFlagged = true)
-          case char => throw new IllegalArgumentException(s"Invalid character: $char")
+          case ch => throw new IllegalArgumentException(s"Invalid character: $ch")
         }.toVector
       }.toVector
-    }.toEither.left.map(error => ParseError(s"Failed to parse game data: ${error.getMessage}"))
+    }.toEither.left.map(e => ParseError(s"Failed to parse game data: ${e.getMessage}"))
   }
 
   def validateGrid(grid: Vector[Vector[GameCell]]): Either[GameError, Unit] = {
@@ -52,17 +72,4 @@ object GameIO {
     }
   }
 
-  def readGameFile(path: Path): Either[GameError, Array[String]] = {
-    Try {
-      Files.readAllLines(path).asScala.toArray
-    }.toEither.left.map(error => FileError(s"Failed to read file: ${error.getMessage}"))
-  }
-
-  def loadGameFromFile(path: Path): Either[GameError, Vector[Vector[GameCell]]] = {
-    for {
-      lines <- readGameFile(path)
-      grid <- loadGame(lines)
-      _ <- validateGrid(grid)
-    } yield grid
-  }
 } 

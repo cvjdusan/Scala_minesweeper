@@ -43,4 +43,8 @@ object GameState {
     score = 1000,
     suggested = Set.empty
   )
+
+  implicit def gameStateToString(state: GameState): String = {
+    s"GameState(score=${state.score}, clicks=${state.clickCount}, rows=${state.rows}, cols=${state.cols})"
+  }
 } 

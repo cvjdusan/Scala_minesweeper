@@ -1,4 +1,6 @@
+import GridOperations.updateCell
 import model.GameCell
+
 
 object GridOperations {
 
@@ -24,19 +26,19 @@ object GridOperations {
 
   def getNeighbors(grid: Vector[Vector[GameCell]], row: Int, col: Int): Vector[(Int, Int)] = {
     val neighbors = Vector(
-      (-1,-1), (-1,0), (-1,1),
-      (0,-1),         (0,1),
-      (1,-1), (1,0),  (1,1)
+      (-1, -1), (-1, 0), (-1, 1),
+      (0, -1), (0, 1),
+      (1, -1), (1, 0), (1, 1)
     )
-    
+
     neighbors.collect {
       case (dr, dc) if inBounds(grid, row + dr, col + dc) => (row + dr, col + dc)
     }
   }
 
   def calculateAdjacentMines(grid: Vector[Vector[GameCell]], row: Int, col: Int): Int = {
-    getNeighbors(grid, row, col).count { case (nr, nc) => 
-      grid(nr)(nc).isMine 
+    getNeighbors(grid, row, col).count { case (nr, nc) =>
+      grid(nr)(nc).isMine
     }
   }
 
@@ -61,4 +63,5 @@ object GridOperations {
       else cell
     }
   }
+
 } 

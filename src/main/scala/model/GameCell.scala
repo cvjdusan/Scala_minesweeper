@@ -6,3 +6,15 @@ final case class GameCell(
                            adjacentMines: Int = 0,
                            isFlagged: Boolean = false
                          )
+
+object GameCellOps {
+  implicit class GameCellExtensions(val cell: GameCell) extends AnyVal {
+    def when(condition: Boolean)(f: GameCell => GameCell): GameCell = {
+      if (condition) f(cell) else cell
+    }
+
+    def unless(condition: Boolean)(f: GameCell => GameCell): GameCell = {
+      when(!condition)(f)
+    }
+  }
+}

@@ -4,8 +4,12 @@ import operations.Isometry
 import java.nio.file.Path
 import java.time.Instant
 
-
 class GameController() {
+
+  // Parcijalno primenjene funkcije - funkcionalne konstrukcije
+  val decreaseScoreBy10: GameState => GameState = _.decreaseScore(10)
+  val decreaseScoreBy20: GameState => GameState = _.decreaseScore(20)
+  val decreaseScoreBy5: GameState => GameState = _.decreaseScore(5)
 
   def initGrid(r: Int, c: Int): GameState = {
     val newGrid = GameLogic.initGridWithoutMines(r, c)
@@ -34,11 +38,10 @@ class GameController() {
   }
 
   def endGame(state: GameState): Option[(Long, Long, Int, Long)] = {
-    GameLogic.calculateFinalScore(state).map { result =>
+    val scoreWithState = GameLogic.calculateFinalScore(state).map { result =>
       (result, state.withLevelCompleted)
-    }.map { case (result, newState) =>
-      (result, newState)
-    }.map(_._1)
+    }
+    scoreWithState.map { case (result, _) => result }
   }
 
   def recalculateAdjacent(state: GameState): GameState = {
@@ -57,19 +60,25 @@ class GameController() {
   }
 
   def toggleMine(state: GameState, r: Int, c: Int): GameState = {
-    val newGrid = GridOperations.toggleMine(state.grid, r, c)
+    import model.GameCellOps._
+    val cell = state.grid(r)(c)
+    val updatedCell = cell.unless(cell.isRevealed)(_.copy(isMine = !cell.isMine))
+    val newGrid = GridOperations.updateCell(state.grid, r, c)(_ => updatedCell)
     state.withGrid(newGrid)
   }
 
   def toggleFlag(state: GameState, r: Int, c: Int): GameState = {
-    val newGrid = GridOperations.toggleFlag(state.grid, r, c)
+    import model.GameCellOps._
+    val cell = state.grid(r)(c)
+    val updatedCell = cell.when(!cell.isRevealed)(_.copy(isFlagged = !cell.isFlagged))
+    val newGrid = GridOperations.updateCell(state.grid, r, c)(_ => updatedCell)
     state.withGrid(newGrid)
   }
 
   def suggestMove(state: GameState): (Option[(Int, Int)], GameState) = {
     GameLogic.suggestMove(state) match {
       case Some(move) =>
-        val newState = state.addSuggested(move).decreaseScore(5)
+        val newState = decreaseScoreBy5(state.addSuggested(move))
         (Some(move), newState)
       case None => (None, state)
     }
@@ -159,11 +168,8 @@ class GameController() {
         move match {
           case Move.Left(r, c) =>
             val cell = getCell(currentState, r - 1, c - 1)
-            if (cell.isMine) {
-              revealAllMines(currentState)
-            } else {
-              revealCellAndNeighbors(currentState, r - 1, c - 1)
-            }
+            if (cell.isMine) revealAllMines(currentState)
+            else revealCellAndNeighbors(currentState, r - 1, c - 1)
 
           case Move.Right(r, c) =>
             toggleFlag(currentState, r - 1, c - 1)
@@ -196,6 +202,8 @@ class GameController() {
   def getCell(state: GameState, r: Int, c: Int): GameCell = state.grid(r)(c)
   def getGrid(state: GameState): Vector[Vector[GameCell]] = state.grid
   def getScore(state: GameState): Long = state.score
+  
+
   def getClickCount(state: GameState): Int = state.clickCount
   def isWin(state: GameState): Boolean = state.grid.flatten.forall(cell => cell.isRevealed || cell.isMine)
   def rows(state: GameState): Int = state.rows

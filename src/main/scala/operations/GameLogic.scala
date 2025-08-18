@@ -66,10 +66,6 @@ object GameLogic {
       None
   }
 
-  def isGameWon(grid: Vector[Vector[GameCell]]): Boolean = {
-    grid.flatten.forall { cell => cell.isRevealed || cell.isMine }
-  }
-
   def calculateFinalScore(state: GameState): Option[(Long, Long, Int, Long)] = {
     if (state.levelCompleted) None
     else {
