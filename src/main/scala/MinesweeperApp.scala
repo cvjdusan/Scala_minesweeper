@@ -79,7 +79,7 @@ object MinesweeperApp extends JFXApp3 {
     val controller = new GameController()
     new GameView(controller, showGameOverMessage, showGameWinMessage, commit)
   }
-  
+
   override def start(): Unit = {
     val controller = new GameController()
 
@@ -348,44 +348,6 @@ object MinesweeperApp extends JFXApp3 {
           headerText = "Failed to start game"
           contentText = s"Error: ${exception.getMessage}"
         }.showAndWait()
-    }
-  }
-
-  private def refreshLevelView(controller: GameController, gridPane: GridPane, view: GameView): Unit = {
-    gridPane.children.clear()
-    val grid = controller.getGrid(Game.get)
-    for (row <- grid.indices; col <- grid(row).indices) {
-      val cell = grid(row)(col)
-      val button = new Label {
-        prefWidth = 40
-        prefHeight = 40
-        alignment = Pos.Center
-        style = if (cell.isMine) "-fx-background-color: red;" else "-fx-background-color: lightgray;"
-        text = if (cell.isMine) "💣" else ""
-      }
-      gridPane.add(button, col, row)
-    }
-  }
-
-  private def saveLevelToFile(controller: GameController, view: GameView): Unit = {
-    val fileChooser = new FileChooser {
-      title = "Save Level"
-      extensionFilters.add(new FileChooser.ExtensionFilter("Text Files", "*.txt"))
-    }
-    val file = fileChooser.showSaveDialog(stage)
-    if (file != null) {
-      val writer = new java.io.PrintWriter(file)
-      try {
-        controller.getGrid(Game.get).foreach { row =>
-          writer.println(row.map(cell => if (cell.isMine) "#" else "-").mkString(""))
-        }
-      } finally {
-        writer.close()
-      }
-      new Alert(AlertType.Information) {
-        title = "Save Successful"
-        headerText = "Level saved successfully!"
-      }.showAndWait()
     }
   }
 
