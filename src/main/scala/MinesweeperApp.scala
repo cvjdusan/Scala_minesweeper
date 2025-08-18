@@ -22,8 +22,64 @@ object MinesweeperApp extends JFXApp3 {
     "Normal" -> Seq("Level 1", "Level 2", "Random"),
     "Advanced" -> Seq("Level 1", "Level 2", "Random")
   )
-  private var commit: GameCommit = _
 
+  private def showGameOverMessage(): Unit = {
+    val controller = new GameController()
+    val result = controller.endGame(Game.get)
+    result.foreach { case (initialScore, timeSpent, clicks, finalScore) =>
+      val playerName = "Player 1"
+      updateResults(playerName, finalScore)
+
+      new Alert(AlertType.Information) {
+        title = "Game Over"
+        headerText = "💣 BOOM 💣 Game over!"
+        contentText =
+          s"""
+             |Initial Score: $initialScore
+             |Time Spent: $timeSpent seconds
+             |Clicks: $clicks
+             |Final Score: $finalScore
+             |""".stripMargin
+      }.showAndWait()
+    }
+  }
+
+  private def showGameWinMessage(): Unit = {
+    val controller = new GameController()
+    val result = controller.endGame(Game.get)
+    result.foreach { case (initialScore, timeSpent, clicks, finalScore) =>
+      val playerName = "Player 1"
+      updateResults(playerName, finalScore)
+
+      new Alert(AlertType.Information) {
+        title = "Congrats!"
+        headerText = "You have won!"
+        contentText =
+          s"""
+             |Initial Score: $initialScore
+             |Time Spent: $timeSpent seconds
+             |Clicks: $clicks
+             |Final Score: $finalScore
+             |""".stripMargin
+      }.showAndWait()
+    }
+  }
+
+  private lazy val commit: GameCommit = {
+    val controller = new GameController()
+    new GameCommit(
+      controller,
+      (st, over) => view.updateView(controller.getGrid(st), isGameOver = over),
+      showGameOverMessage,
+      showGameWinMessage
+    )
+  }
+
+  private lazy val view: GameView = {
+    val controller = new GameController()
+    new GameView(controller, showGameOverMessage, showGameWinMessage, commit)
+  }
+  
   override def start(): Unit = {
     val controller = new GameController()
 
@@ -32,55 +88,6 @@ object MinesweeperApp extends JFXApp3 {
     val startButton = createStartButton()
 
     val scoreLabel = createScoreLabel(controller)
-
-    lazy val view = new GameView(controller, showGameOverMessage, showGameWinMessage, commit)
-
-    commit = new GameCommit(
-      controller,
-      (st, over) => view.updateView(controller.getGrid(st), isGameOver = over),
-      showGameOverMessage,
-      showGameWinMessage
-    )
-
-    def showGameOverMessage(): Unit = {
-      val result = controller.endGame(Game.get)
-      result.foreach { case (initialScore, timeSpent, clicks, finalScore) =>
-        val playerName = "Player 1"
-        updateResults(playerName, finalScore)
-
-        new Alert(AlertType.Information) {
-          title = "Game Over"
-          headerText = "💣 BOOM 💣 Game over!"
-          contentText =
-            s"""
-               |Initial Score: $initialScore
-               |Time Spent: $timeSpent seconds
-               |Clicks: $clicks
-               |Final Score: $finalScore
-               |""".stripMargin
-        }.showAndWait()
-      }
-    }
-
-    def showGameWinMessage(): Unit = {
-      val result = controller.endGame(Game.get)
-      result.foreach { case (initialScore, timeSpent, clicks, finalScore) =>
-        val playerName = "Player 1"
-        updateResults(playerName, finalScore)
-
-        new Alert(AlertType.Information) {
-          title = "Congrats!"
-          headerText = "You have won!"
-          contentText =
-            s"""
-               |Initial Score: $initialScore
-               |Time Spent: $timeSpent seconds
-               |Clicks: $clicks
-               |Final Score: $finalScore
-               |""".stripMargin
-        }.showAndWait()
-      }
-    }
 
 
     difficultyComboBox.onAction = _ => {
@@ -124,16 +131,16 @@ object MinesweeperApp extends JFXApp3 {
               new Menu("Options") {
                 items = Seq(
                   new MenuItem("New game") {
-                    onAction = _ => resetToSelection(difficultyComboBox, levelsListView, startButton, mainLayout, scoreLabel, hintButton, controller, view)
+                    onAction = _ => resetToSelection(difficultyComboBox, levelsListView, startButton, mainLayout, scoreLabel, hintButton, controller)
                   },
                   new MenuItem("Save game") {
-                    onAction = _ => saveGame(controller, view)
+                    onAction = _ => saveGame(controller)
                   },
                   new MenuItem("Play moves") {
-                    onAction = _ => playMoves(controller, view)
+                    onAction = _ => playMoves(controller)
                   },
                   new MenuItem("Load game") {
-                    onAction = _ => loadGame(controller, view, mainLayout, scoreLabel, hintButton)
+                    onAction = _ => loadGame(controller, mainLayout, scoreLabel, hintButton)
                   },
                   new MenuItem("Create level") {
                     onAction = _ => createLevel(mainLayout)
@@ -263,8 +270,7 @@ object MinesweeperApp extends JFXApp3 {
                                mainLayout: BorderPane,
                                scoreLabel: Label,
                                hintButton: Button,
-                               controller: GameController,
-                               view: GameView): Unit = {
+                               controller: GameController): Unit = {
     difficultyComboBox.value = null
     levelsListView.items.value.clear()
     levelsListView.disable = true
@@ -290,7 +296,7 @@ object MinesweeperApp extends JFXApp3 {
     updateScoreLabel(controller, scoreLabel, view)
   }
 
-  private def loadGame(controller: GameController, view: GameView, mainLayout: BorderPane, scoreLabel: Label, hintButton: Button): Unit = {
+  private def loadGame(controller: GameController, mainLayout: BorderPane, scoreLabel: Label, hintButton: Button): Unit = {
     val fileChooser = new FileChooser {
       title = "Load Game"
       extensionFilters.add(new FileChooser.ExtensionFilter("Game Files", "*.txt"))
@@ -584,7 +590,7 @@ object MinesweeperApp extends JFXApp3 {
     bestResults.sortBy(-_._2)
   }
 
-  private def saveGame(controller: GameController, view: GameView): Unit = {
+  private def saveGame(controller: GameController): Unit = {
     val chooser = new FileChooser {
       title = "Save Game"
       extensionFilters.add(new FileChooser.ExtensionFilter("Text Files", "*.txt"))
@@ -606,7 +612,7 @@ object MinesweeperApp extends JFXApp3 {
     }
   }
 
-  private def playMoves(controller: GameController, view: GameView): Unit = {
+  private def playMoves(controller: GameController): Unit = {
     val chooser = new FileChooser {
       title = "Open Move Sequence"
       extensionFilters.add(new FileChooser.ExtensionFilter("Text Files", "*.txt"))
