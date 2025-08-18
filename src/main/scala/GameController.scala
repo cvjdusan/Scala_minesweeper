@@ -44,6 +44,13 @@ class GameController() {
     scoreWithState.map { case (result, _) => result }
   }
 
+  def endGameGameOver(state: GameState): Option[(Long, Long, Int, Long)] = {
+    val scoreWithState = GameLogic.calculateFinalScore(state, isGameOver = true).map { result =>
+      (result, state.withLevelCompleted)
+    }
+    scoreWithState.map { case (result, _) => result }
+  }
+
   def recalculateAdjacent(state: GameState): GameState = {
     val newGrid = GridOperations.recalculateAdjacent(state.grid)
     state.withGrid(newGrid)
@@ -78,7 +85,7 @@ class GameController() {
   def suggestMove(state: GameState): (Option[(Int, Int)], GameState) = {
     GameLogic.suggestMove(state) match {
       case Some(move) =>
-        val newState = decreaseScoreBy5(state.addSuggested(move))
+        val newState = decreaseScoreBy20(state.addSuggested(move))
         (Some(move), newState)
       case None => (None, state)
     }
@@ -205,7 +212,10 @@ class GameController() {
   
 
   def getClickCount(state: GameState): Int = state.clickCount
-  def isWin(state: GameState): Boolean = state.grid.flatten.forall(cell => cell.isRevealed || cell.isMine)
+  def isWin(state: GameState): Boolean =
+    state.grid.flatten
+      .filterNot(_.isMine)
+      .forall(_.isRevealed)
   def rows(state: GameState): Int = state.rows
   def cols(state: GameState): Int = state.cols
   def inBounds(state: GameState, r: Int, c: Int): Boolean = r >= 0 && r < state.rows && c >= 0 && c < state.cols

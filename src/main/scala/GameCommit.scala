@@ -14,4 +14,12 @@ final class GameCommit(
     if (isOver(next)) onOver()
     else if (controller.isWin(next)) onWin()
   }
+
+  def updateSilently(f: (GameController, GameState) => GameState): Unit = {
+    val next = f(controller, Game.get)
+    Game.set(next)
+    render(next, false)
+  }
+
+
 }

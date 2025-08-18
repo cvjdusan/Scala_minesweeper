@@ -25,7 +25,7 @@ object MinesweeperApp extends JFXApp3 {
 
   private def showGameOverMessage(): Unit = {
     val controller = new GameController()
-    val result = controller.endGame(Game.get)
+    val result = controller.endGameGameOver(Game.get)
     result.foreach { case (initialScore, timeSpent, clicks, finalScore) =>
       val playerName = "Player 1"
       updateResults(playerName, finalScore)
@@ -110,6 +110,8 @@ object MinesweeperApp extends JFXApp3 {
           (controller, state) => controller.suggestMove(state)._2,
           state => Game.get.isGameLost
         )
+
+        updateScoreLabel(controller, scoreLabel, view)
 
         if (suggestion.isEmpty) {
           new Alert(AlertType.Information) {
@@ -271,6 +273,7 @@ object MinesweeperApp extends JFXApp3 {
                                scoreLabel: Label,
                                hintButton: Button,
                                controller: GameController): Unit = {
+    commit.updateSilently((_, _) => GameState.empty)
     difficultyComboBox.value = null
     levelsListView.items.value.clear()
     levelsListView.disable = true
@@ -292,7 +295,7 @@ object MinesweeperApp extends JFXApp3 {
   }
 
   private def resetScoreView(controller: GameController, scoreLabel: Label, view: GameView) = {
-    commit.update((controller, state) => controller.initScore(state))
+    commit.updateSilently((controller, state) => controller.initScore(state))
     updateScoreLabel(controller, scoreLabel, view)
   }
 
@@ -535,7 +538,10 @@ object MinesweeperApp extends JFXApp3 {
     val resultsText = if (bestResults.isEmpty) {
       "No results available yet."
     } else {
-      bestResults.zipWithIndex.map { case ((name, score), idx) =>
+      bestResults
+        .zipWithIndex
+        .sortBy { case ((_, score), _) => -score }
+        .map { case ((name, score), idx) =>
         s"${idx + 1}. $name: $score"
       }.mkString("\n")
     }

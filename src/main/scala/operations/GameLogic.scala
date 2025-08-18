@@ -66,16 +66,23 @@ object GameLogic {
       None
   }
 
-  def calculateFinalScore(state: GameState): Option[(Long, Long, Int, Long)] = {
+  def calculateFinalScore(
+                           state: GameState,
+                           isGameOver: Boolean = false
+                         ): Option[(Long, Long, Int, Long)] = {
     if (state.levelCompleted) None
     else {
-      val duration = java.time.Duration.between(state.startTime, java.time.Instant.now()).toSeconds
-      val timePenalty = duration * 2
+      val duration     = java.time.Duration.between(state.startTime, java.time.Instant.now()).toSeconds
+      val timePenalty  = duration * 2
       val clickPenalty = state.clickCount * 10
-      val finalScore = (state.score - timePenalty - clickPenalty).max(0)
-      Some((state.score, duration, state.clickCount, finalScore))
+
+      val baseScore  = if (isGameOver) 0L else state.score
+      val finalScore = if (isGameOver) 0L else (state.score - timePenalty - clickPenalty).max(0)
+
+      Some((baseScore, duration, state.clickCount, finalScore))
     }
   }
+
 
   // used for level creating
 
