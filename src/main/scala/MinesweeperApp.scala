@@ -3,15 +3,20 @@ import scalafx.collections.ObservableBuffer
 import scalafx.geometry.Pos
 import scalafx.scene.Scene
 import scalafx.scene.control.Alert.AlertType
-import scalafx.scene.control.{Alert, ComboBox, ListView, Menu, MenuBar, MenuItem}
+import scalafx.scene.control.{Alert, Button, ButtonType, CheckBox, ComboBox, Label, ListView, Menu, MenuBar, MenuItem, TextField, TextInputDialog}
 import scalafx.scene.layout.{BorderPane, GridPane, HBox, StackPane, VBox}
 import scalafx.stage.FileChooser
 
 import java.io.{BufferedReader, File, FileReader}
-import scalafx.scene.control._
-import operations.{CentralSymmetry, Reflection, Rotation, Translation}
+import operations.{CentralSymmetry, IsometryComposer, Reflection, Rotation, Translation, TransparentIsometry}
+import scalafx.Includes.jfxObjectProperty2sfx
 
 import scala.util._
+import scala.util.Random
+import scala.util.Try
+import scala.util.Success
+import scala.util.Failure
+
 
 object MinesweeperApp extends JFXApp3 {
 
@@ -391,7 +396,8 @@ object MinesweeperApp extends JFXApp3 {
       "Remove Column at Beginning",
       "Remove Column at End",
       "Toggle Cell Type",
-      "Clear Sector"
+      "Clear Sector",
+      "Validate Level"
     )
 
     val actionButton = new Button("Perform Action")
@@ -440,6 +446,23 @@ object MinesweeperApp extends JFXApp3 {
           val bottomRightCol = promptForInt("Enter Bottom-Right Column:")
           levelState = controller.clearSector(levelState, topLeftRow, topLeftCol, bottomRightRow, bottomRightCol)
           refreshLevelView()
+        case "Validate Level" =>
+          val difficulty = promptForDifficulty()
+          val validationResult = controller.validateLevel(levelState, difficulty)
+          validationResult match {
+            case Right(_) =>
+              new Alert(AlertType.Information) {
+                title = "Validation Successful"
+                headerText = "Level is valid"
+                contentText = s"Level meets $difficulty requirements"
+              }.showAndWait()
+            case Left(error) =>
+              new Alert(AlertType.Warning) {
+                title = "Validation Failed"
+                headerText = "Level does not meet requirements"
+                contentText = s"Error: $error"
+              }.showAndWait()
+          }
         case _ => new Alert(AlertType.Warning) {
           title = "Invalid Action"
           contentText = "Please select a valid action."
@@ -448,24 +471,34 @@ object MinesweeperApp extends JFXApp3 {
     }
 
     saveButton.onAction = _ => {
-      val fileChooser = new FileChooser {
-        title = "Save Level"
-        extensionFilters.add(new FileChooser.ExtensionFilter("Text Files", "*.txt"))
-      }
-      val file = fileChooser.showSaveDialog(stage)
-      if (file != null) {
-        val writer = new java.io.PrintWriter(file)
-        try {
-          controller.getGrid(levelState).foreach { row =>
-            writer.println(row.map(cell => if (cell.isMine) "#" else "-").mkString(""))
+      val validationResult = controller.validateLevel(levelState, "Normal")
+      validationResult match {
+        case Right(_) =>
+          val fileChooser = new FileChooser {
+            title = "Save Level"
+            extensionFilters.add(new FileChooser.ExtensionFilter("Text Files", "*.txt"))
           }
-        } finally {
-          writer.close()
-        }
-        new Alert(AlertType.Information) {
-          title = "Save Successful"
-          headerText = "Level saved successfully!"
-        }.showAndWait()
+          val file = fileChooser.showSaveDialog(stage)
+          if (file != null) {
+            val writer = new java.io.PrintWriter(file)
+            try {
+              controller.getGrid(levelState).foreach { row =>
+                writer.println(row.map(cell => if (cell.isMine) "#" else "-").mkString(""))
+              }
+            } finally {
+              writer.close()
+            }
+            new Alert(AlertType.Information) {
+              title = "Save Successful"
+              headerText = "Level saved successfully!"
+            }.showAndWait()
+          }
+        case Left(error) =>
+          new Alert(AlertType.Error) {
+            title = "Validation Error"
+            headerText = "Level validation failed"
+            contentText = s"Cannot save level: $error"
+          }.showAndWait()
       }
     }
 
@@ -473,7 +506,7 @@ object MinesweeperApp extends JFXApp3 {
       "Rotate Clockwise", "Rotate Counterclockwise",
       "Reflect Horizontally", "Reflect Vertically",
       "Reflect Diagonal (Main)", "Reflect Diagonal (Secondary)",
-      "Central Symmetry", "Translation"
+      "Central Symmetry", "Translation", "Compose Isometries"
     )
 
     val isometryComboBox = new ComboBox[String] {
@@ -481,40 +514,281 @@ object MinesweeperApp extends JFXApp3 {
       promptText = "Choose an isometry"
     }
 
-    val applyIsometryButton = new Button("Apply Isometry") {
+
+    val useSectorCheckbox = new CheckBox("Apply to sector instead of whole grid")
+    val sectorLabel = new Label("Sector (optional):")
+    val topLeftRowField = new TextField {
+      text = "0"
+    }
+    val topLeftColField = new TextField {
+      text = "0"
+    }
+    val bottomRightRowField = new TextField {
+      text = "2"
+    }
+    val bottomRightColField = new TextField {
+      text = "2"
+    }
+    
+    val pivotLabel = new Label("Pivot:")
+    val pivotRowField = new TextField {
+      text = "1"
+    }
+    val pivotColField = new TextField {
+      text = "1"
+    }
+
+    val sectorGrid = new GridPane {
+      hgap = 5
+      vgap = 5
+      add(new Label("Top-Left:"), 0, 0)
+      add(topLeftRowField, 1, 0)
+      add(new Label(","), 2, 0)
+      add(topLeftColField, 3, 0)
+      add(new Label("Bottom-Right:"), 0, 1)
+      add(bottomRightRowField, 1, 1)
+      add(new Label(","), 2, 1)
+      add(bottomRightColField, 3, 1)
+    }
+
+    val pivotGrid = new GridPane {
+      hgap = 5
+      vgap = 5
+      add(new Label("Pivot:"), 0, 0)
+      add(pivotRowField, 1, 0)
+      add(new Label(","), 2, 0)
+      add(pivotColField, 3, 0)
+    }
+
+    val expandingCheckbox = new CheckBox("Expanding")
+    val transparentCheckbox = new CheckBox("Transparent")
+    
+    val optionsGrid = new GridPane {
+      hgap = 5
+      vgap = 5
+      add(expandingCheckbox, 0, 0)
+      add(transparentCheckbox, 1, 0)
+    }
+
+    val applyIsometryButton: Button = new Button("Apply Isometry") {
       onAction = _ => {
-        isometryComboBox.value.value match {
-          case "Rotate Clockwise" =>
-            levelState = controller.applyIsometry(levelState, Rotation(clockwise = true))
-            refreshLevelView()
-          case "Rotate Counterclockwise" =>
-            levelState = controller.applyIsometry(levelState, Rotation(clockwise = false))
-            refreshLevelView()
-          case "Reflect Horizontally" =>
-            levelState = controller.applyIsometry(levelState, Reflection("horizontal"))
-            refreshLevelView()
-          case "Reflect Vertically" =>
-            levelState = controller.applyIsometry(levelState, Reflection("vertical"))
-            refreshLevelView()
-          case "Reflect Diagonal (Main)" =>
-            levelState = controller.applyIsometry(levelState, Reflection("diagonal-main"))
-            refreshLevelView()
-          case "Reflect Diagonal (Secondary)" =>
-            levelState = controller.applyIsometry(levelState, Reflection("diagonal-secondary"))
-            refreshLevelView()
-          case "Central Symmetry" =>
-            levelState = controller.applyIsometry(levelState, CentralSymmetry)
-            refreshLevelView()
-          case "Translation" =>
-            val dx = promptForInt("Enter Translation X:")
-            val dy = promptForInt("Enter Translation Y:")
-            levelState = controller.applyIsometry(levelState, Translation(dx, dy))
-            refreshLevelView()
-          case _ =>
-            new Alert(AlertType.Warning) {
-              title = "Invalid Isometry"
-              contentText = "Please select a valid isometry."
-            }.showAndWait()
+        if (useSectorCheckbox.isSelected) {
+          try {
+            val topLeftRow = topLeftRowField.text.value.toInt
+            val topLeftCol = topLeftColField.text.value.toInt
+            val bottomRightRow = bottomRightRowField.text.value.toInt
+            val bottomRightCol = bottomRightColField.text.value.toInt
+            val pivotRow = pivotRowField.text.value.toInt
+            val pivotCol = pivotColField.text.value.toInt
+
+            val sector = controller.createSector(topLeftRow, topLeftCol, bottomRightRow, bottomRightCol)
+            val pivot = (pivotRow, pivotCol)
+
+            if (sector.isValid) {
+              isometryComboBox.value.value match {
+                case "Rotate Clockwise" =>
+                  val expanding = expandingCheckbox.isSelected
+                  val transparent = transparentCheckbox.isSelected
+                  val rotation = if (transparent) {
+                    new Rotation(clockwise = true, expanding) with TransparentIsometry
+                  } else {
+                    new Rotation(clockwise = true, expanding)
+                  }
+                  levelState = controller.applyIsometryToSector(levelState, rotation, sector, pivot)
+                  refreshLevelView()
+                case "Rotate Counterclockwise" =>
+                  val expanding = expandingCheckbox.isSelected
+                  val transparent = transparentCheckbox.isSelected
+                  val rotation = if (transparent) {
+                    new Rotation(clockwise = false, expanding) with TransparentIsometry
+                  } else {
+                    new Rotation(clockwise = false, expanding)
+                  }
+                  levelState = controller.applyIsometryToSector(levelState, rotation, sector, pivot)
+                  refreshLevelView()
+                case "Reflect Horizontally" =>
+                  val expanding = expandingCheckbox.isSelected
+                  val transparent = transparentCheckbox.isSelected
+                  val reflection = if (transparent) {
+                    new Reflection("horizontal", None, expanding) with TransparentIsometry
+                  } else {
+                    new Reflection("horizontal", None, expanding)
+                  }
+                  levelState = controller.applyIsometryToSector(levelState, reflection, sector, pivot)
+                  refreshLevelView()
+                case "Reflect Vertically" =>
+                  val expanding = expandingCheckbox.isSelected
+                  val transparent = transparentCheckbox.isSelected
+                  val reflection = if (transparent) {
+                    new Reflection("vertical", None, expanding) with TransparentIsometry
+                  } else {
+                    new Reflection("vertical", None, expanding)
+                  }
+                  levelState = controller.applyIsometryToSector(levelState, reflection, sector, pivot)
+                  refreshLevelView()
+                case "Reflect Diagonal (Main)" =>
+                  val expanding = expandingCheckbox.isSelected
+                  val transparent = transparentCheckbox.isSelected
+                  val reflection = if (transparent) {
+                    new Reflection("diagonal-main", None, expanding) with TransparentIsometry
+                  } else {
+                    new Reflection("diagonal-main", None, expanding)
+                  }
+                  levelState = controller.applyIsometryToSector(levelState, reflection, sector, pivot)
+                  refreshLevelView()
+                case "Reflect Diagonal (Secondary)" =>
+                  val expanding = expandingCheckbox.isSelected
+                  val transparent = transparentCheckbox.isSelected
+                  val reflection = if (transparent) {
+                    new Reflection("diagonal-secondary", None, expanding) with TransparentIsometry
+                  } else {
+                    new Reflection("diagonal-secondary", None, expanding)
+                  }
+                  levelState = controller.applyIsometryToSector(levelState, reflection, sector, pivot)
+                  refreshLevelView()
+                case "Central Symmetry" =>
+                  val expanding = expandingCheckbox.isSelected
+                  val transparent = transparentCheckbox.isSelected
+                  val symmetry = if (transparent) {
+                    new CentralSymmetry(expanding) with TransparentIsometry
+                  } else {
+                    CentralSymmetry(expanding)
+                  }
+                  levelState = controller.applyIsometryToSector(levelState, symmetry, sector, pivot)
+                  refreshLevelView()
+                case "Translation" =>
+                  val dx = promptForInt("Enter Translation X:")
+                  val dy = promptForInt("Enter Translation Y:")
+                  val expanding = expandingCheckbox.isSelected
+                  val transparent = transparentCheckbox.isSelected
+                  val translation = if (transparent) {
+                    new Translation(dx, dy, expanding) with TransparentIsometry
+                  } else {
+                    new Translation(dx, dy, expanding)
+                  }
+                  levelState = controller.applyIsometryToSector(levelState, translation, sector, pivot)
+                  refreshLevelView()
+                case "Compose Isometries" =>
+                  val composedIsometry = composeIsometries()
+                  composedIsometry.foreach { iso =>
+                    levelState = controller.applyIsometryToSector(levelState, iso, sector, pivot)
+                    refreshLevelView()
+                  }
+                case _ =>
+                  new Alert(AlertType.Warning) {
+                    title = "Invalid Isometry"
+                    contentText = "Please select a valid isometry."
+                  }.showAndWait()
+              }
+            } else {
+              new Alert(AlertType.Warning) {
+                title = "Invalid Sector"
+                contentText = "Sector coordinates are invalid. Please check your input."
+              }.showAndWait()
+            }
+          } catch {
+            case _: NumberFormatException =>
+              new Alert(AlertType.Warning) {
+                title = "Invalid Input"
+                contentText = "Please enter valid numbers for sector and pivot coordinates."
+              }.showAndWait()
+          }
+        } else {
+          isometryComboBox.value.value match {
+            case "Rotate Clockwise" =>
+              val expanding = expandingCheckbox.isSelected
+              val transparent = transparentCheckbox.isSelected
+              val rotation = if (transparent) {
+                new Rotation(clockwise = true, expanding) with TransparentIsometry
+              } else {
+                new Rotation(clockwise = true, expanding)
+              }
+              levelState = controller.applyIsometry(levelState, rotation)
+              refreshLevelView()
+            case "Rotate Counterclockwise" =>
+              val expanding = expandingCheckbox.isSelected
+              val transparent = transparentCheckbox.isSelected
+              val rotation = if (transparent) {
+                new Rotation(clockwise = false, expanding) with TransparentIsometry
+              } else {
+                new Rotation(clockwise = false, expanding)
+              }
+              levelState = controller.applyIsometry(levelState, rotation)
+              refreshLevelView()
+            case "Reflect Horizontally" =>
+              val expanding = expandingCheckbox.isSelected
+              val transparent = transparentCheckbox.isSelected
+              val reflection = if (transparent) {
+                new Reflection("horizontal", None, expanding) with TransparentIsometry
+              } else {
+                new Reflection("horizontal", None, expanding)
+              }
+              levelState = controller.applyIsometry(levelState, reflection)
+              refreshLevelView()
+            case "Reflect Vertically" =>
+              val expanding = expandingCheckbox.isSelected
+              val transparent = transparentCheckbox.isSelected
+              val reflection = if (transparent) {
+                new Reflection("vertical", None, expanding) with TransparentIsometry
+              } else {
+                new Reflection("vertical", None, expanding)
+              }
+              levelState = controller.applyIsometry(levelState, reflection)
+              refreshLevelView()
+            case "Reflect Diagonal (Main)" =>
+              val expanding = expandingCheckbox.isSelected
+              val transparent = transparentCheckbox.isSelected
+              val reflection = if (transparent) {
+                new Reflection("diagonal-main", None, expanding) with TransparentIsometry
+              } else {
+                new Reflection("diagonal-main", None, expanding)
+              }
+              levelState = controller.applyIsometry(levelState, reflection)
+              refreshLevelView()
+            case "Reflect Diagonal (Secondary)" =>
+              val expanding = expandingCheckbox.isSelected
+              val transparent = transparentCheckbox.isSelected
+              val reflection = if (transparent) {
+                new Reflection("diagonal-secondary", None, expanding) with TransparentIsometry
+              } else {
+                new Reflection("diagonal-secondary", None, expanding)
+              }
+              levelState = controller.applyIsometry(levelState, reflection)
+              refreshLevelView()
+            case "Central Symmetry" =>
+              val expanding = expandingCheckbox.isSelected
+              val transparent = transparentCheckbox.isSelected
+              val symmetry = if (transparent) {
+                new CentralSymmetry(expanding) with TransparentIsometry
+              } else {
+                CentralSymmetry(expanding)
+              }
+              levelState = controller.applyIsometry(levelState, symmetry)
+              refreshLevelView()
+            case "Translation" =>
+              val dx = promptForInt("Enter Translation X:")
+              val dy = promptForInt("Enter Translation Y:")
+              val expanding = expandingCheckbox.isSelected
+              val transparent = transparentCheckbox.isSelected
+              val translation = if (transparent) {
+                new Translation(dx, dy, expanding) with TransparentIsometry
+              } else {
+                new Translation(dx, dy, expanding)
+              }
+              levelState = controller.applyIsometry(levelState, translation)
+              refreshLevelView()
+            case "Compose Isometries" =>
+              val composedIsometry = composeIsometries()
+              composedIsometry.foreach { iso =>
+                levelState = controller.applyIsometry(levelState, iso)
+                refreshLevelView()
+              }
+            case _ =>
+              new Alert(AlertType.Warning) {
+                title = "Invalid Isometry"
+                contentText = "Please select a valid isometry."
+              }.showAndWait()
+          }
         }
       }
     }
@@ -522,7 +796,20 @@ object MinesweeperApp extends JFXApp3 {
     mainLayout.center = new VBox {
       spacing = 10
       alignment = Pos.TopCenter
-      children = Seq(gridPane, optionsComboBox, actionButton, isometryComboBox, applyIsometryButton, saveButton)
+      children = Seq(
+        gridPane,
+        optionsComboBox,
+        actionButton,
+        isometryComboBox,
+                  useSectorCheckbox,
+          sectorLabel,
+          sectorGrid,
+          pivotLabel,
+          pivotGrid,
+          optionsGrid,
+          applyIsometryButton,
+        saveButton
+      )
     }
   }
 
@@ -534,6 +821,56 @@ object MinesweeperApp extends JFXApp3 {
     dialog.showAndWait().map(_.toInt).getOrElse(0)
   }
 
+  private def promptForDifficulty(): String = {
+    val dialog = new ComboBox[String] {
+      items = ObservableBuffer("Beginner", "Normal", "Advanced")
+      promptText = "Choose difficulty"
+      value = "Normal"
+    }
+
+    val resultDialog = new Alert(AlertType.Confirmation) {
+      title = "Select Difficulty"
+      headerText = "Choose difficulty level for validation:"
+      contentText = "Select the difficulty level you want to validate against:"
+    }
+
+    resultDialog.dialogPane().setContent(dialog)
+
+    val result = resultDialog.showAndWait()
+    result match {
+      case Some(ButtonType.OK) => dialog.value.value
+      case _                   => "Normal"
+    }
+  }
+
+
+     
+
+  private def composeIsometries(): Option[operations.Isometry] = {
+    val dialog = new TextInputDialog(defaultValue = "rotation,reflection") {
+      title = "Compose Isometries"
+      headerText = "Enter isometries to compose (comma-separated)"
+      contentText = "Available: rotation,reflection,central,translation"
+    }
+
+    dialog.showAndWait().flatMap { input =>
+      val isometryNames = input.split(",").map(_.trim.toLowerCase)
+      val isometries = isometryNames.toSeq.flatMap {
+        case "rotation" => Some(Rotation(clockwise = true, expanding = false))
+        case "reflection" => Some(Reflection("horizontal", None, expanding = false))
+        case "central" => Some(CentralSymmetry(expanding = false))
+        case "translation" => Some(Translation(1, 1, expanding = false))
+        case _ => None
+      }
+
+      if (isometries.nonEmpty) {
+        Some(IsometryComposer.compose(isometries: _*))
+      } else {
+        None
+      }
+    }
+  }
+
   private def showResults(): Unit = {
     val resultsText = if (bestResults.isEmpty) {
       "No results available yet."
@@ -542,8 +879,8 @@ object MinesweeperApp extends JFXApp3 {
         .zipWithIndex
         .sortBy { case ((_, score), _) => -score }
         .map { case ((name, score), idx) =>
-        s"${idx + 1}. $name: $score"
-      }.mkString("\n")
+          s"${idx + 1}. $name: $score"
+        }.mkString("\n")
     }
 
     new Alert(AlertType.Information) {
@@ -610,4 +947,6 @@ object MinesweeperApp extends JFXApp3 {
       }
     }
   }
+
+
 }

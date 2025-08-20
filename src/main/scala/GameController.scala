@@ -1,5 +1,5 @@
 import model.GameCell
-import operations.Isometry
+import operations.{Isometry, LevelValidator, Sector}
 
 import java.nio.file.Path
 import java.time.Instant
@@ -77,7 +77,7 @@ class GameController() {
   def toggleFlag(state: GameState, r: Int, c: Int): GameState = {
     import model.GameCellOps._
     val cell = state.grid(r)(c)
-    val updatedCell = cell.when(!cell.isRevealed)(_.copy(isFlagged = !cell.isFlagged))
+    val updatedCell = cell.when(!cell.isRevealed)(cell => cell.copy(isFlagged = !cell.isFlagged))
     val newGrid = GridOperations.updateCell(state.grid, r, c)(_ => updatedCell)
     state.withGrid(newGrid)
   }
@@ -95,6 +95,20 @@ class GameController() {
     val transformedGrid = iso(state.grid)
     val recalculatedGrid = GridOperations.recalculateAdjacent(transformedGrid)
     state.withGrid(recalculatedGrid)
+  }
+
+  def applyIsometryToSector(state: GameState, iso: Isometry, sector: Sector, pivot: (Int, Int)): GameState = {
+    val transformedGrid = iso.applyToSector(state.grid, sector, pivot)
+    val recalculatedGrid = GridOperations.recalculateAdjacent(transformedGrid)
+    state.withGrid(recalculatedGrid)
+  }
+
+  def createSector(topLeftRow: Int, topLeftCol: Int, bottomRightRow: Int, bottomRightCol: Int): Sector = {
+    Sector(topLeftRow, topLeftCol, bottomRightRow, bottomRightCol)
+  }
+
+  def validateLevel(state: GameState, difficulty: String): Either[String, Boolean] = {
+    LevelValidator.validateLevel(state.grid, difficulty)
   }
 
   def addRowBegin(state: GameState): GameState = {
@@ -148,15 +162,27 @@ class GameController() {
   }
 
   def clearSector(state: GameState, topLeftRow: Int, topLeftCol: Int, bottomRightRow: Int, bottomRightCol: Int): GameState = {
-    val newGrid = (topLeftRow to bottomRightRow).foldLeft(state.grid) { case (grid, r) =>
-      (topLeftCol to bottomRightCol).foldLeft(grid) { case (g, c) =>
-        if (GridOperations.inBounds(g, r, c)) {
-          GridOperations.updateCell(g, r, c)(_.copy(isMine = false))
-        } else g
+
+    val rows = state.grid.length
+    val cols = if (rows == 0) 0 else state.grid.head.length
+
+    val r0 = math.max(0, topLeftRow)
+    val r1 = math.min(rows - 1, bottomRightRow)
+    val c0 = math.max(0, topLeftCol)
+    val c1 = math.min(cols - 1, bottomRightCol)
+
+    val newGrid =
+      state.grid.zipWithIndex.map { case (rowVec, r) =>
+        if (r >= r0 && r <= r1)
+          rowVec.zipWithIndex.map { case (cell, c) =>
+            if (c >= c0 && c <= c1) cell.copy(isMine = false) else cell
+          }
+        else rowVec
       }
-    }
+
     state.withGrid(newGrid)
   }
+
 
   def loadGame(state: GameState, lines: Array[String]): Either[String, GameState] = {
     GameIO.loadGame(lines).map { newGrid =>
@@ -207,17 +233,23 @@ class GameController() {
   }
 
   def getCell(state: GameState, r: Int, c: Int): GameCell = state.grid(r)(c)
+
   def getGrid(state: GameState): Vector[Vector[GameCell]] = state.grid
+
   def getScore(state: GameState): Long = state.score
-  
+
 
   def getClickCount(state: GameState): Int = state.clickCount
+
   def isWin(state: GameState): Boolean =
     state.grid.flatten
       .filterNot(_.isMine)
       .forall(_.isRevealed)
+
   def rows(state: GameState): Int = state.rows
+
   def cols(state: GameState): Int = state.cols
+
   def inBounds(state: GameState, r: Int, c: Int): Boolean = r >= 0 && r < state.rows && c >= 0 && c < state.cols
 
 }
