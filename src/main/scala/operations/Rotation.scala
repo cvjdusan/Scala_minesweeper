@@ -4,12 +4,17 @@ import model.GameCell
 
 case class Rotation(clockwise: Boolean = true, expanding: Boolean = false) extends Isometry {
   override def isExpanding: Boolean = expanding
-  override def isTransparent: Boolean = false
 
-  override def apply[A](g: Vector[Vector[A]]): Vector[Vector[A]] =
-    if (g.isEmpty || g.head.isEmpty) g
-    else if (clockwise) g.transpose.map(_.reverse) // transpose = rows into cols, flip cols
-    else g.transpose.reverse // transpose => rows into cols, flip rows
+  override def apply[A](g: Vector[Vector[A]]): Vector[Vector[A]] = {
+    val rows = g.length
+    val cols = if (rows == 0) 0 else g.head.length // first head length
+    if (rows == 0 || cols == 0) return g // no rotation
+    
+    val sector = Sector(0, 0, rows - 1, cols - 1)
+    val pivot = (rows / 2, cols / 2)
+
+    applyToSector(g, sector, pivot)
+  }
 
   override def inverse: Isometry = Rotation(!clockwise)
 

@@ -362,6 +362,7 @@ object MinesweeperApp extends JFXApp3 {
   private def createLevel(mainLayout: BorderPane): Unit = {
     val controller = new GameController()
     var levelState = controller.initGrid(5, 5)
+    val originalLevelState = levelState
 
     val gridPane = new GridPane {
       hgap = 2
@@ -402,6 +403,7 @@ object MinesweeperApp extends JFXApp3 {
 
     val actionButton = new Button("Perform Action")
     val saveButton = new Button("Save Level")
+    val resetButton = new Button("Reset to Original")
 
     val optionsComboBox = new ComboBox[String] {
       items = ObservableBuffer(options: _*)
