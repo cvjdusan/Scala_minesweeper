@@ -2,8 +2,7 @@ package operations
 
 import model.GameCell
 
-case class Rotation(clockwise: Boolean = true, expanding: Boolean = false) extends Isometry {
-  override def isExpanding: Boolean = expanding
+case class Rotation(clockwise: Boolean = true) extends Isometry {
 
   override def apply[A](g: Vector[Vector[A]]): Vector[Vector[A]] = {
     val rows = g.length

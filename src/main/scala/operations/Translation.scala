@@ -9,11 +9,11 @@ object TranslationDebug {
   var callCount = 0
 }
 
-case class Translation(dx: Int, dy: Int, expanding: Boolean = true) extends Isometry {
+case class Translation(dx: Int, dy: Int) extends Isometry {
 
   override def apply[A](g: Vector[Vector[A]]): Vector[Vector[A]] = {
     TranslationDebug.callCount += 1
-    println(s"Translation.apply called #${TranslationDebug.callCount} with dx=$dx, dy=$dy, expanding=$expanding")
+
     println(s"Input grid size: ${g.length}x${if (g.nonEmpty) g.head.length else 0}")
     
     val rows = g.length
@@ -29,9 +29,9 @@ case class Translation(dx: Int, dy: Int, expanding: Boolean = true) extends Isom
     result
   }
 
-  override def isExpanding: Boolean = expanding
+  // isExpanding se postavlja preko ExpandingIsometry trait-a
 
-  override def inverse: Isometry = Translation(-dx, -dy, expanding)
+  override def inverse: Isometry = Translation(-dx, -dy)
 
   protected def calculateMappedCoordinates(sector: Sector, pivot: (Int, Int)): Seq[(Int, Int, Int, Int)] = {
     for {

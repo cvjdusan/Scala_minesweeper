@@ -6,7 +6,9 @@ trait Isometry {
   def apply[A](matrix: Vector[Vector[A]]): Vector[Vector[A]]
 
   def isExpanding: Boolean = false
+
   def isTransparent: Boolean = false
+
   def inverse: Isometry
 
   def >>>(other: Isometry): Isometry = new ComposedIsometry(this, other)
@@ -16,12 +18,10 @@ trait Isometry {
     val mappedCoordinates = calculateMappedCoordinates(sector, pivot)
     println(s"applyToSector: isExpanding=$isExpanding, mappedCoordinates=$mappedCoordinates")
 
-    // 2. if expanding mood
+    // 2. Proširi grid ako je potrebno
     val (workingGrid, offsetRow, offsetCol) = if (isExpanding) {
       println(s"Expanding grid...")
-      val result = expandGridForMappedCoordinates(grid, mappedCoordinates)
-      println(s"Expanded grid size: ${result._1.length}x${if (result._1.nonEmpty) result._1.head.length else 0}, offset=(${result._2}, ${result._3})")
-      result
+      expandGrid(grid, mappedCoordinates)
     } else {
       println(s"Not expanding grid")
       (grid, 0, 0)
@@ -49,12 +49,12 @@ trait Isometry {
 
         // Proverava da li su target koordinate u granicama
         if (adjustedTgtRow >= 0 && adjustedTgtRow < result.length &&
-            adjustedTgtCol >= 0 && adjustedTgtCol < result(0).length) {
+          adjustedTgtCol >= 0 && adjustedTgtCol < result(0).length) {
 
           if (isTransparent) {
             // Transparent overlay - OR logika za mine
             val targetCell = result(adjustedTgtRow)(adjustedTgtCol)
-            val finalCell = combineTransparent(sourceCell, targetCell)
+            val finalCell = combineCells(sourceCell, targetCell)
             println(s"  Transparent overlay: $sourceCell + $targetCell = $finalCell")
             result = result.updated(adjustedTgtRow, result(adjustedTgtRow).updated(adjustedTgtCol, finalCell))
           } else {
@@ -72,6 +72,17 @@ trait Isometry {
     }
 
     result
+  }
+
+  // Default implementacije koje se override-uju u trait-ovima
+  protected def expandGrid[A](grid: Vector[Vector[A]], mappedCoordinates: Seq[(Int, Int, Int, Int)]): (Vector[Vector[A]], Int, Int) = {
+    // Default: ne proširi grid
+    (grid, 0, 0)
+  }
+
+  protected def combineCells[A](sourceCell: A, targetCell: A): A = {
+    // Default: prepiši source cell
+    sourceCell
   }
 
   // Svaka izometrija mora implementirati ovo
@@ -103,111 +114,6 @@ trait Isometry {
     }
   }
 
-  private def combineTransparent[A](sourceCell: A, targetCell: A): A = {
-    (sourceCell, targetCell) match {
-      case (src: GameCell, tgt: GameCell) =>
-        // OR logika za mine
-        val combinedMine = src.isMine || tgt.isMine
-        tgt.copy(isMine = combinedMine).asInstanceOf[A]
-      case (src: GameCell, _) => src.asInstanceOf[A]
-      case (_, tgt: GameCell) => tgt.asInstanceOf[A]
-      case _ => sourceCell.asInstanceOf[A]
-    }
-  }
-
-  private def expandGridForMappedCoordinates[A](grid: Vector[Vector[A]], mappedCoordinates: Seq[(Int, Int, Int, Int)]): (Vector[Vector[A]], Int, Int) = {
-    if (mappedCoordinates.isEmpty) return (grid, 0, 0)
-
-    val currentRows = grid.length
-    val currentCols = if (currentRows == 0) 0 else grid.head.length
-
-    // Nađi min/max koordinate u mapiranim ciljevima
-    val targetRows = mappedCoordinates.map(_._3)
-    val targetCols = mappedCoordinates.map(_._4)
-
-    val minTargetRow = targetRows.min
-    val maxTargetRow = targetRows.max
-    val minTargetCol = targetCols.min
-    val maxTargetCol = targetCols.max
-
-    // Izračunaj offset za negativne koordinate
-    val offsetRow = math.max(0, -minTargetRow)
-    val offsetCol = math.max(0, -minTargetCol)
-
-    // Izračunaj potrebne dimenzije uključujući offset
-    val totalRows = math.max(currentRows + offsetRow, maxTargetRow + offsetRow + 1)
-    val totalCols = math.max(currentCols + offsetCol, maxTargetCol + offsetCol + 1)
-
-    // Proširi grid - koristi praznu GameCell ili prvi element iz grid-a
-    val empty = if (currentRows > 0 && currentCols > 0) {
-      grid(0)(0) match {
-        case _: GameCell => GameCell(false).asInstanceOf[A]
-        case other => other
-      }
-    } else {
-      GameCell(false).asInstanceOf[A]
-    }
-    val expandedGrid = Vector.tabulate(totalRows) { row =>
-      Vector.tabulate(totalCols) { col =>
-        // Originalni grid se pomera za offset
-        val originalRow = row - offsetRow
-        val originalCol = col - offsetCol
-        if (originalRow >= 0 && originalRow < currentRows &&
-            originalCol >= 0 && originalCol < currentCols) {
-          grid(originalRow)(originalCol)
-        } else {
-          empty
-        }
-      }
-    }
-
-    (expandedGrid, offsetRow, offsetCol)
-  }
-
-
-}
-
-trait TransparentIsometry extends Isometry {
-  override def isTransparent: Boolean = true
-}
-
-case class ComposedIsometry(first: Isometry, second: Isometry) extends Isometry {
-  override def isExpanding: Boolean = first.isExpanding || second.isExpanding
-  override def isTransparent: Boolean = first.isTransparent && second.isTransparent
-
-  override def apply[A](grid: Vector[Vector[A]]): Vector[Vector[A]] = {
-    require(grid.nonEmpty && grid.head.nonEmpty, "Grid must not be empty")
-    second.apply(first.apply(grid))
-  }
-
-  override def inverse: Isometry = new ComposedIsometry(second.inverse, first.inverse)
-
-  // Kompozicija sektorskih transformacija
-  override def applyToSector[A](grid: Vector[Vector[A]], sector: Sector, pivot: (Int, Int)): Vector[Vector[A]] = {
-    // Prvo primeni prvu izometriju na sektor
-    val intermediateGrid = first.applyToSector(grid, sector, pivot)
-
-    // Zatim primeni drugu izometriju na rezultat
-    // Za kompoziciju, koristimo isti sektor i pivot
-    second.applyToSector(intermediateGrid, sector, pivot)
-  }
-
-  // Za kompoziciju, mapirane koordinate su kompozicija mapiranja
-  protected def calculateMappedCoordinates(sector: Sector, pivot: (Int, Int)): Seq[(Int, Int, Int, Int)] = {
-    val firstMapped = first.calculateMappedCoordinatesForComposition(sector, pivot)
-
-    // Aplikuj drugu transformaciju na mapirane koordinate
-    firstMapped.flatMap { case (srcRow, srcCol, firstTgtRow, firstTgtCol) =>
-      val secondMapped = second.calculateMappedCoordinatesForComposition(
-        Sector(firstTgtRow, firstTgtCol, firstTgtRow, firstTgtCol),
-        pivot
-      )
-      secondMapped.map { case (_, _, secondTgtRow, secondTgtCol) =>
-        (srcRow, srcCol, secondTgtRow, secondTgtCol)
-      }
-    }
-  }
-
   // Operator za primenu više puta
   def applyNTimes(n: Int): Isometry = {
     if (n <= 0) IdentityIsometry
@@ -219,20 +125,3 @@ case class ComposedIsometry(first: Isometry, second: Isometry) extends Isometry 
   }
 }
 
-case object IdentityIsometry extends Isometry {
-  override def isExpanding: Boolean = false
-  override def isTransparent: Boolean = true
-
-  override def apply[A](grid: Vector[Vector[A]]): Vector[Vector[A]] = grid
-  override def inverse: Isometry = this
-
-  // Identity transformacija - sve koordinate ostaju iste
-  protected def calculateMappedCoordinates(sector: Sector, pivot: (Int, Int)): Seq[(Int, Int, Int, Int)] = {
-    for {
-      srcRow <- sector.topLeftRow to sector.bottomRightRow
-      srcCol <- sector.topLeftCol to sector.bottomRightCol
-    } yield {
-      (srcRow, srcCol, srcRow, srcCol) // source = target
-    }
-  }
-}

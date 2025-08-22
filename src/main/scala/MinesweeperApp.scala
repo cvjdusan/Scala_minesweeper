@@ -8,7 +8,7 @@ import scalafx.scene.layout.{BorderPane, GridPane, HBox, StackPane, VBox}
 import scalafx.stage.FileChooser
 
 import java.io.{BufferedReader, File, FileReader}
-import operations.{CentralSymmetry, IsometryComposer, Reflection, Rotation, Translation, TransparentIsometry}
+import operations.{CentralSymmetry, ExpandingIsometry, IsometryComposer, Reflection, Rotation, Translation, TransparentIsometry}
 import scalafx.Includes.jfxObjectProperty2sfx
 
 import scala.util._
@@ -572,6 +572,86 @@ object MinesweeperApp extends JFXApp3 {
       add(transparentCheckbox, 1, 0)
     }
 
+    def composeIsometries(): Option[operations.Isometry] = {
+      val dialog = new TextInputDialog(defaultValue = "rotation,reflection") {
+        title = "Compose Isometries"
+        headerText = "Enter isometries to compose (comma-separated)"
+        contentText = "Available: rotation,reflection,central,translation"
+      }
+
+      dialog.showAndWait().flatMap { input =>
+        val isometryNames = input.split(",").map(_.trim.toLowerCase)
+        val expanding = expandingCheckbox.isSelected
+        val transparent = transparentCheckbox.isSelected
+        
+        val isometries = isometryNames.toSeq.flatMap {
+          case "rotation" => 
+            if (transparent) {
+              if (expanding) {
+                Some(new Rotation(clockwise = true) with ExpandingIsometry with TransparentIsometry)
+              } else {
+                Some(new Rotation(clockwise = true) with TransparentIsometry)
+              }
+            } else {
+              if (expanding) {
+                Some(new Rotation(clockwise = true) with ExpandingIsometry)
+              } else {
+                Some(new Rotation(clockwise = true))
+              }
+            }
+          case "reflection" => 
+            if (transparent) {
+              if (expanding) {
+                Some(new Reflection("horizontal", None) with ExpandingIsometry with TransparentIsometry)
+              } else {
+                Some(new Reflection("horizontal", None) with TransparentIsometry)
+              }
+            } else {
+              if (expanding) {
+                Some(new Reflection("horizontal", None) with ExpandingIsometry)
+              } else {
+                Some(new Reflection("horizontal", None))
+              }
+            }
+          case "central" => 
+            if (transparent) {
+              if (expanding) {
+                Some(new CentralSymmetry() with ExpandingIsometry with TransparentIsometry)
+              } else {
+                Some(new CentralSymmetry() with TransparentIsometry)
+              }
+            } else {
+              if (expanding) {
+                Some(new CentralSymmetry() with ExpandingIsometry)
+              } else {
+                Some(new CentralSymmetry())
+              }
+            }
+          case "translation" => 
+            if (transparent) {
+              if (expanding) {
+                Some(new Translation(1, 1) with ExpandingIsometry with TransparentIsometry)
+              } else {
+                Some(new Translation(1, 1) with TransparentIsometry)
+              }
+            } else {
+              if (expanding) {
+                Some(new Translation(1, 1) with ExpandingIsometry)
+              } else {
+                Some(new Translation(1, 1))
+              }
+            }
+          case _ => None
+        }
+
+        if (isometries.nonEmpty) {
+          Some(IsometryComposer.compose(isometries: _*))
+        } else {
+          None
+        }
+      }
+    }
+
     val applyIsometryButton: Button = new Button("Apply Isometry") {
       onAction = _ => {
         if (useSectorCheckbox.isSelected) {
@@ -592,9 +672,17 @@ object MinesweeperApp extends JFXApp3 {
                   val expanding = expandingCheckbox.isSelected
                   val transparent = transparentCheckbox.isSelected
                   val rotation = if (transparent) {
-                    new Rotation(clockwise = true, expanding) with TransparentIsometry
+                    if (expanding) {
+                      new Rotation(clockwise = true) with ExpandingIsometry with TransparentIsometry
+                    } else {
+                      new Rotation(clockwise = true) with TransparentIsometry
+                    }
                   } else {
-                    new Rotation(clockwise = true, expanding)
+                    if (expanding) {
+                      new Rotation(clockwise = true) with ExpandingIsometry
+                    } else {
+                      new Rotation(clockwise = true)
+                    }
                   }
                   levelState = controller.applyIsometryToSector(levelState, rotation, sector, pivot)
                   refreshLevelView()
@@ -602,9 +690,17 @@ object MinesweeperApp extends JFXApp3 {
                   val expanding = expandingCheckbox.isSelected
                   val transparent = transparentCheckbox.isSelected
                   val rotation = if (transparent) {
-                    new Rotation(clockwise = false, expanding) with TransparentIsometry
+                    if (expanding) {
+                      new Rotation(clockwise = false) with ExpandingIsometry with TransparentIsometry
+                    } else {
+                      new Rotation(clockwise = false) with TransparentIsometry
+                    }
                   } else {
-                    new Rotation(clockwise = false, expanding)
+                    if (expanding) {
+                      new Rotation(clockwise = false) with ExpandingIsometry
+                    } else {
+                      new Rotation(clockwise = false)
+                    }
                   }
                   levelState = controller.applyIsometryToSector(levelState, rotation, sector, pivot)
                   refreshLevelView()
@@ -612,9 +708,17 @@ object MinesweeperApp extends JFXApp3 {
                   val expanding = expandingCheckbox.isSelected
                   val transparent = transparentCheckbox.isSelected
                   val reflection = if (transparent) {
-                    new Reflection("horizontal", None, expanding) with TransparentIsometry
+                    if (expanding) {
+                      new Reflection("horizontal", None) with ExpandingIsometry with TransparentIsometry
+                    } else {
+                      new Reflection("horizontal", None) with TransparentIsometry
+                    }
                   } else {
-                    new Reflection("horizontal", None, expanding)
+                    if (expanding) {
+                      new Reflection("horizontal", None) with ExpandingIsometry
+                    } else {
+                      new Reflection("horizontal", None)
+                    }
                   }
                   levelState = controller.applyIsometryToSector(levelState, reflection, sector, pivot)
                   refreshLevelView()
@@ -622,9 +726,17 @@ object MinesweeperApp extends JFXApp3 {
                   val expanding = expandingCheckbox.isSelected
                   val transparent = transparentCheckbox.isSelected
                   val reflection = if (transparent) {
-                    new Reflection("vertical", None, expanding) with TransparentIsometry
+                    if (expanding) {
+                      new Reflection("vertical", None) with ExpandingIsometry with TransparentIsometry
+                    } else {
+                      new Reflection("vertical", None) with TransparentIsometry
+                    }
                   } else {
-                    new Reflection("vertical", None, expanding)
+                    if (expanding) {
+                      new Reflection("vertical", None) with ExpandingIsometry
+                    } else {
+                      new Reflection("vertical", None)
+                    }
                   }
                   levelState = controller.applyIsometryToSector(levelState, reflection, sector, pivot)
                   refreshLevelView()
@@ -632,9 +744,17 @@ object MinesweeperApp extends JFXApp3 {
                   val expanding = expandingCheckbox.isSelected
                   val transparent = transparentCheckbox.isSelected
                   val reflection = if (transparent) {
-                    new Reflection("diagonal-main", None, expanding) with TransparentIsometry
+                    if (expanding) {
+                      new Reflection("diagonal-main", None) with ExpandingIsometry with TransparentIsometry
+                    } else {
+                      new Reflection("diagonal-main", None) with TransparentIsometry
+                    }
                   } else {
-                    new Reflection("diagonal-main", None, expanding)
+                    if (expanding) {
+                      new Reflection("diagonal-main", None) with ExpandingIsometry
+                    } else {
+                      new Reflection("diagonal-main", None)
+                    }
                   }
                   levelState = controller.applyIsometryToSector(levelState, reflection, sector, pivot)
                   refreshLevelView()
@@ -642,9 +762,17 @@ object MinesweeperApp extends JFXApp3 {
                   val expanding = expandingCheckbox.isSelected
                   val transparent = transparentCheckbox.isSelected
                   val reflection = if (transparent) {
-                    new Reflection("diagonal-secondary", None, expanding) with TransparentIsometry
+                    if (expanding) {
+                      new Reflection("diagonal-secondary", None) with ExpandingIsometry with TransparentIsometry
+                    } else {
+                      new Reflection("diagonal-secondary", None) with TransparentIsometry
+                    }
                   } else {
-                    new Reflection("diagonal-secondary", None, expanding)
+                    if (expanding) {
+                      new Reflection("diagonal-secondary", None) with ExpandingIsometry
+                    } else {
+                      new Reflection("diagonal-secondary", None)
+                    }
                   }
                   levelState = controller.applyIsometryToSector(levelState, reflection, sector, pivot)
                   refreshLevelView()
@@ -652,9 +780,17 @@ object MinesweeperApp extends JFXApp3 {
                   val expanding = expandingCheckbox.isSelected
                   val transparent = transparentCheckbox.isSelected
                   val symmetry = if (transparent) {
-                    new CentralSymmetry(expanding) with TransparentIsometry
+                    if (expanding) {
+                      new CentralSymmetry() with ExpandingIsometry with TransparentIsometry
+                    } else {
+                      new CentralSymmetry() with TransparentIsometry
+                    }
                   } else {
-                    CentralSymmetry(expanding)
+                    if (expanding) {
+                      new CentralSymmetry() with ExpandingIsometry
+                    } else {
+                      new CentralSymmetry()
+                    }
                   }
                   levelState = controller.applyIsometryToSector(levelState, symmetry, sector, pivot)
                   refreshLevelView()
@@ -664,9 +800,17 @@ object MinesweeperApp extends JFXApp3 {
                   val expanding = expandingCheckbox.isSelected
                   val transparent = transparentCheckbox.isSelected
                   val translation = if (transparent) {
-                    new Translation(dx, dy, expanding) with TransparentIsometry
+                    if (expanding) {
+                      new Translation(dx, dy) with ExpandingIsometry with TransparentIsometry
+                    } else {
+                      new Translation(dx, dy) with TransparentIsometry
+                    }
                   } else {
-                    new Translation(dx, dy, expanding)
+                    if (expanding) {
+                      new Translation(dx, dy) with ExpandingIsometry
+                    } else {
+                      new Translation(dx, dy)
+                    }
                   }
                   levelState = controller.applyIsometryToSector(levelState, translation, sector, pivot)
                   refreshLevelView()
@@ -701,9 +845,17 @@ object MinesweeperApp extends JFXApp3 {
               val expanding = expandingCheckbox.isSelected
               val transparent = transparentCheckbox.isSelected
               val rotation = if (transparent) {
-                new Rotation(clockwise = true, expanding) with TransparentIsometry
+                if (expanding) {
+                  new Rotation(clockwise = true) with ExpandingIsometry with TransparentIsometry
+                } else {
+                  new Rotation(clockwise = true) with TransparentIsometry
+                }
               } else {
-                new Rotation(clockwise = true, expanding)
+                if (expanding) {
+                  new Rotation(clockwise = true) with ExpandingIsometry
+                } else {
+                  new Rotation(clockwise = true)
+                }
               }
               levelState = controller.applyIsometry(levelState, rotation)
               refreshLevelView()
@@ -711,9 +863,17 @@ object MinesweeperApp extends JFXApp3 {
               val expanding = expandingCheckbox.isSelected
               val transparent = transparentCheckbox.isSelected
               val rotation = if (transparent) {
-                new Rotation(clockwise = false, expanding) with TransparentIsometry
+                if (expanding) {
+                  new Rotation(clockwise = false) with ExpandingIsometry with TransparentIsometry
+                } else {
+                  new Rotation(clockwise = false) with TransparentIsometry
+                }
               } else {
-                new Rotation(clockwise = false, expanding)
+                if (expanding) {
+                  new Rotation(clockwise = false) with ExpandingIsometry
+                } else {
+                  new Rotation(clockwise = false)
+                }
               }
               levelState = controller.applyIsometry(levelState, rotation)
               refreshLevelView()
@@ -721,9 +881,17 @@ object MinesweeperApp extends JFXApp3 {
               val expanding = expandingCheckbox.isSelected
               val transparent = transparentCheckbox.isSelected
               val reflection = if (transparent) {
-                new Reflection("horizontal", None, expanding) with TransparentIsometry
+                if (expanding) {
+                  new Reflection("horizontal", None) with ExpandingIsometry with TransparentIsometry
+                } else {
+                  new Reflection("horizontal", None) with TransparentIsometry
+                }
               } else {
-                new Reflection("horizontal", None, expanding)
+                if (expanding) {
+                  new Reflection("horizontal", None) with ExpandingIsometry
+                } else {
+                  new Reflection("horizontal", None)
+                }
               }
               levelState = controller.applyIsometry(levelState, reflection)
               refreshLevelView()
@@ -731,9 +899,17 @@ object MinesweeperApp extends JFXApp3 {
               val expanding = expandingCheckbox.isSelected
               val transparent = transparentCheckbox.isSelected
               val reflection = if (transparent) {
-                new Reflection("vertical", None, expanding) with TransparentIsometry
+                if (expanding) {
+                  new Reflection("vertical", None) with ExpandingIsometry with TransparentIsometry
+                } else {
+                  new Reflection("vertical", None) with TransparentIsometry
+                }
               } else {
-                new Reflection("vertical", None, expanding)
+                if (expanding) {
+                  new Reflection("vertical", None) with ExpandingIsometry
+                } else {
+                  new Reflection("vertical", None)
+                }
               }
               levelState = controller.applyIsometry(levelState, reflection)
               refreshLevelView()
@@ -741,9 +917,17 @@ object MinesweeperApp extends JFXApp3 {
               val expanding = expandingCheckbox.isSelected
               val transparent = transparentCheckbox.isSelected
               val reflection = if (transparent) {
-                new Reflection("diagonal-main", None, expanding) with TransparentIsometry
+                if (expanding) {
+                  new Reflection("diagonal-main", None) with ExpandingIsometry with TransparentIsometry
+                } else {
+                  new Reflection("diagonal-main", None) with TransparentIsometry
+                }
               } else {
-                new Reflection("diagonal-main", None, expanding)
+                if (expanding) {
+                  new Reflection("diagonal-main", None) with ExpandingIsometry
+                } else {
+                  new Reflection("diagonal-main", None)
+                }
               }
               levelState = controller.applyIsometry(levelState, reflection)
               refreshLevelView()
@@ -751,9 +935,17 @@ object MinesweeperApp extends JFXApp3 {
               val expanding = expandingCheckbox.isSelected
               val transparent = transparentCheckbox.isSelected
               val reflection = if (transparent) {
-                new Reflection("diagonal-secondary", None, expanding) with TransparentIsometry
+                if (expanding) {
+                  new Reflection("diagonal-secondary", None) with ExpandingIsometry with TransparentIsometry
+                } else {
+                  new Reflection("diagonal-secondary", None) with TransparentIsometry
+                }
               } else {
-                new Reflection("diagonal-secondary", None, expanding)
+                if (expanding) {
+                  new Reflection("diagonal-secondary", None) with ExpandingIsometry
+                } else {
+                  new Reflection("diagonal-secondary", None)
+                }
               }
               levelState = controller.applyIsometry(levelState, reflection)
               refreshLevelView()
@@ -761,9 +953,17 @@ object MinesweeperApp extends JFXApp3 {
               val expanding = expandingCheckbox.isSelected
               val transparent = transparentCheckbox.isSelected
               val symmetry = if (transparent) {
-                new CentralSymmetry(expanding) with TransparentIsometry
+                if (expanding) {
+                  new CentralSymmetry() with ExpandingIsometry with TransparentIsometry
+                } else {
+                  new CentralSymmetry() with TransparentIsometry
+                }
               } else {
-                CentralSymmetry(expanding)
+                if (expanding) {
+                  new CentralSymmetry() with ExpandingIsometry
+                } else {
+                  new CentralSymmetry()
+                }
               }
               levelState = controller.applyIsometry(levelState, symmetry)
               refreshLevelView()
@@ -773,9 +973,17 @@ object MinesweeperApp extends JFXApp3 {
               val expanding = expandingCheckbox.isSelected
               val transparent = transparentCheckbox.isSelected
               val translation = if (transparent) {
-                new Translation(dx, dy, expanding) with TransparentIsometry
+                if (expanding) {
+                  new Translation(dx, dy) with ExpandingIsometry with TransparentIsometry
+                } else {
+                  new Translation(dx, dy) with TransparentIsometry
+                }
               } else {
-                new Translation(dx, dy, expanding)
+                if (expanding) {
+                  new Translation(dx, dy) with ExpandingIsometry
+                } else {
+                  new Translation(dx, dy)
+                }
               }
               levelState = controller.applyIsometry(levelState, translation)
               refreshLevelView()
@@ -848,30 +1056,7 @@ object MinesweeperApp extends JFXApp3 {
 
      
 
-  private def composeIsometries(): Option[operations.Isometry] = {
-    val dialog = new TextInputDialog(defaultValue = "rotation,reflection") {
-      title = "Compose Isometries"
-      headerText = "Enter isometries to compose (comma-separated)"
-      contentText = "Available: rotation,reflection,central,translation"
-    }
 
-    dialog.showAndWait().flatMap { input =>
-      val isometryNames = input.split(",").map(_.trim.toLowerCase)
-      val isometries = isometryNames.toSeq.flatMap {
-        case "rotation" => Some(Rotation(clockwise = true, expanding = false))
-        case "reflection" => Some(Reflection("horizontal", None, expanding = false))
-        case "central" => Some(CentralSymmetry(expanding = false))
-        case "translation" => Some(Translation(1, 1, expanding = false))
-        case _ => None
-      }
-
-      if (isometries.nonEmpty) {
-        Some(IsometryComposer.compose(isometries: _*))
-      } else {
-        None
-      }
-    }
-  }
 
   private def showResults(): Unit = {
     val resultsText = if (bestResults.isEmpty) {

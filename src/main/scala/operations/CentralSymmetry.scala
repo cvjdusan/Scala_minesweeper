@@ -1,7 +1,7 @@
 package operations
 
-case class CentralSymmetry(expanding: Boolean = false) extends Isometry {
-  override def isExpanding: Boolean = expanding
+case class CentralSymmetry() extends Isometry {
+  // isExpanding se postavlja preko ExpandingIsometry trait-a
   
   override def apply[A](g: Vector[Vector[A]]): Vector[Vector[A]] = {
     val rows = g.length

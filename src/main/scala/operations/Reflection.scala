@@ -2,8 +2,8 @@ package operations
 import model.GameCell
 import operations.Sector
 
-case class Reflection(axis: String, axisPosition: Option[Int] = None, expanding: Boolean = false) extends Isometry {
-  override def isExpanding: Boolean = expanding
+case class Reflection(axis: String, axisPosition: Option[Int] = None) extends Isometry {
+  // isExpanding se postavlja preko ExpandingIsometry trait-a
 
   override def apply[A](g: Vector[Vector[A]]): Vector[Vector[A]] = {
     val rows = g.length
