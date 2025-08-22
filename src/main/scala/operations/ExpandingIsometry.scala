@@ -6,7 +6,6 @@ import model.GameCell
 trait ExpandingIsometry extends Isometry {
   override def isExpanding: Boolean = true
 
-  // Override-ujemo expandGrid metodu iz Isometry trait-a
   override protected def expandGrid[A](grid: Vector[Vector[A]], mappedCoordinates: Seq[(Int, Int, Int, Int)]): (Vector[Vector[A]], Int, Int) = {
     if (mappedCoordinates.isEmpty) return (grid, 0, 0)
 
@@ -15,7 +14,7 @@ trait ExpandingIsometry extends Isometry {
 
     if (currentRows == 0 || currentCols == 0) return (grid, 0, 0)
 
-    // Pronađi min/max koordinate iz mapiranja
+    //  min/max koordinate iz mapiranja
     val targetRows = mappedCoordinates.map(_._3)
     val targetCols = mappedCoordinates.map(_._4)
 
@@ -24,11 +23,11 @@ trait ExpandingIsometry extends Isometry {
     val minCol = targetCols.min
     val maxCol = targetCols.max
 
-    // Izračunaj potrebne dimenzije
+    // izr potrebne dimenzije
     val totalRows = math.max(currentRows, maxRow + 1) - math.min(0, minRow)
     val totalCols = math.max(currentCols, maxCol + 1) - math.min(0, minCol)
 
-    // Izračunaj offset za pozicioniranje originalnog grida
+    // izr offset za pozicioniranje originalnog grida
     val offsetRow = if (minRow < 0) -minRow else 0
     val offsetCol = if (minCol < 0) -minCol else 0
 

@@ -1,6 +1,7 @@
 package operations
 
 import model.GameCell
+import operations.Sector
 
 trait Isometry {
   def apply[A](matrix: Vector[Vector[A]]): Vector[Vector[A]]
@@ -14,11 +15,10 @@ trait Isometry {
   def >>>(other: Isometry): Isometry = new ComposedIsometry(this, other)
 
   def applyToSector[A](grid: Vector[Vector[A]], sector: Sector, pivot: (Int, Int)): Vector[Vector[A]] = {
-    // 1. calculate mapped coord
+
     val mappedCoordinates = calculateMappedCoordinates(sector, pivot)
     println(s"applyToSector: isExpanding=$isExpanding, mappedCoordinates=$mappedCoordinates")
 
-    // 2. Proširi grid ako je potrebno
     val (workingGrid, offsetRow, offsetCol) = if (isExpanding) {
       println(s"Expanding grid...")
       expandGrid(grid, mappedCoordinates)
@@ -27,38 +27,34 @@ trait Isometry {
       (grid, 0, 0)
     }
 
-    // 3. Direktno mapiraj koordinate iz sektora na ciljne pozicije
+
     var result = workingGrid
 
-    // Prvo očisti originalni sektor ako nije transparent
     if (!isTransparent) {
       result = clearOriginalSector(result, sector, offsetRow, offsetCol)
     }
 
-    // Zatim aplikuj mapiranje
+    // apply mapping
     for ((srcRow, srcCol, tgtRow, tgtCol) <- mappedCoordinates) {
       val adjustedTgtRow = tgtRow + offsetRow
       val adjustedTgtCol = tgtCol + offsetCol
 
       println(s"Mapping: ($srcRow,$srcCol) -> ($tgtRow,$tgtCol) -> adjusted ($adjustedTgtRow,$adjustedTgtCol)")
 
-      // Proverava da li su source koordinate validne
       if (srcRow >= 0 && srcRow < grid.length && srcCol >= 0 && srcCol < grid(0).length) {
         val sourceCell = grid(srcRow)(srcCol)
         println(s"  Source cell at ($srcRow,$srcCol): $sourceCell")
 
-        // Proverava da li su target koordinate u granicama
         if (adjustedTgtRow >= 0 && adjustedTgtRow < result.length &&
           adjustedTgtCol >= 0 && adjustedTgtCol < result(0).length) {
 
           if (isTransparent) {
-            // Transparent overlay - OR logika za mine
+            // Transparent overlay OR logika za mine
             val targetCell = result(adjustedTgtRow)(adjustedTgtCol)
             val finalCell = combineCells(sourceCell, targetCell)
             println(s"  Transparent overlay: $sourceCell + $targetCell = $finalCell")
             result = result.updated(adjustedTgtRow, result(adjustedTgtRow).updated(adjustedTgtCol, finalCell))
           } else {
-            // Opaque overlay - prepisi target
             println(s"  Opaque overlay: $sourceCell -> ($adjustedTgtRow,$adjustedTgtCol)")
             result = result.updated(adjustedTgtRow, result(adjustedTgtRow).updated(adjustedTgtCol, sourceCell))
           }
@@ -74,29 +70,21 @@ trait Isometry {
     result
   }
 
-  // Default implementacije koje se override-uju u trait-ovima
+  // Default
   protected def expandGrid[A](grid: Vector[Vector[A]], mappedCoordinates: Seq[(Int, Int, Int, Int)]): (Vector[Vector[A]], Int, Int) = {
-    // Default: ne proširi grid
     (grid, 0, 0)
   }
 
   protected def combineCells[A](sourceCell: A, targetCell: A): A = {
-    // Default: prepiši source cell
+    // Default
     sourceCell
   }
 
-  // Svaka izometrija mora implementirati ovo
   protected def calculateMappedCoordinates(sector: Sector, pivot: (Int, Int)): Seq[(Int, Int, Int, Int)]
-
-  // Omogućavam ComposedIsometry da pristupi ovoj metodi
-  protected[operations] def calculateMappedCoordinatesForComposition(sector: Sector, pivot: (Int, Int)): Seq[(Int, Int, Int, Int)] = {
-    calculateMappedCoordinates(sector, pivot)
-  }
 
   private def clearOriginalSector[A](grid: Vector[Vector[A]], sector: Sector, offsetRow: Int = 0, offsetCol: Int = 0): Vector[Vector[A]] = {
     grid.zipWithIndex.map { case (row, rowIdx) =>
       row.zipWithIndex.map { case (cell, colIdx) =>
-        // Prilagodi koordinate za offset
         val adjustedRow = rowIdx - offsetRow
         val adjustedCol = colIdx - offsetCol
 
@@ -114,7 +102,6 @@ trait Isometry {
     }
   }
 
-  // Operator za primenu više puta
   def applyNTimes(n: Int): Isometry = {
     if (n <= 0) IdentityIsometry
     else if (n == 1) this
@@ -123,5 +110,10 @@ trait Isometry {
       if (n % 2 == 0) half >>> half else half >>> half >>> this
     }
   }
-}
 
+
+  protected[operations] def calculateMappedCoordinatesForComposition(sector: Sector, pivot: (Int, Int)): Seq[(Int, Int, Int, Int)] = {
+    calculateMappedCoordinates(sector, pivot)
+  }
+
+}
