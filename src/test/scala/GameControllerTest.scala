@@ -141,7 +141,7 @@ class GameControllerTest extends AnyFunSuite with Matchers {
     val (row, col) = suggestion.get
     newState.grid(row)(col).isMine shouldBe false
     newState.grid(row)(col).isRevealed shouldBe false
-    newState.score shouldBe 995 // decreased by 5 for hint
+    newState.score shouldBe 980 // decreased by 20 for hint
   }
 
   test("GameController should apply isometry correctly") {

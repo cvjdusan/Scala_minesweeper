@@ -5,39 +5,88 @@ import model.GameCell
 import scala.annotation.tailrec
 import scala.util.Random
 
+import scala.collection.immutable.Queue
+
 object GameLogic {
 
-  def revealCellAndNeighbors(grid: Vector[Vector[GameCell]], row: Int, col: Int): Vector[Vector[GameCell]] = {
+
+  def revealCellAndNeighbors(grid: Vector[Vector[GameCell]], startRow: Int, startCol: Int): Vector[Vector[GameCell]] = {
 
     @tailrec
-    def revealRecursive(currentGrid: Vector[Vector[GameCell]], toReveal: Set[(Int, Int)]): Vector[Vector[GameCell]] = {
-      if (toReveal.isEmpty) currentGrid
-      else {
-        val r = toReveal.head._1
-        val c = toReveal.head._2
-
-        val cell = currentGrid(r)(c)
+    def revealRecursive(currentGrid: Vector[Vector[GameCell]], queue: Queue[(Int, Int)]): Vector[Vector[GameCell]] = {
+      if (queue.isEmpty) {
+        currentGrid
+      } else {
+        val ((row, col), remainingQueue) = queue.dequeue
+        val cell = currentGrid(row)(col)
 
         if (cell.isRevealed || cell.isFlagged || cell.isMine) {
-          revealRecursive(currentGrid, toReveal.tail)
+          revealRecursive(currentGrid, remainingQueue)
         } else {
-          val revealedGrid = updateCell(currentGrid, r, c)(_.copy(isRevealed = true))
+          val gridWithRevealed = updateCell(currentGrid, row, col)(_.copy(isRevealed = true))
 
-          if (cell.adjacentMines == 0) {
-            val neighbors = getNeighbors(revealedGrid, r, c)
-            val newToReveal = toReveal.tail ++ neighbors.filter {
-              case (nr, nc) => !revealedGrid(nr)(nc).isRevealed && !revealedGrid(nr)(nc).isFlagged
+          val newQueue =
+            if (cell.adjacentMines == 0) {
+              val neighbors = getNeighbors(gridWithRevealed, row, col)
+              val unrevealedNeighbors = neighbors.filter { case (nr, nc) =>
+                val n = gridWithRevealed(nr)(nc)
+                !n.isRevealed && !n.isFlagged
+              }
+              remainingQueue.enqueueAll(unrevealedNeighbors)
+            } else {
+              remainingQueue
             }
-            revealRecursive(revealedGrid, newToReveal)
-          } else {
-            revealRecursive(revealedGrid, toReveal.tail)
-          }
+
+          revealRecursive(gridWithRevealed, newQueue)
         }
       }
     }
 
-    revealRecursive(grid, Set((row, col)))
+    revealRecursive(grid, Queue((startRow, startCol)))
   }
+
+
+  //  def revealCellAndNeighbors(grid: Vector[Vector[GameCell]], startRow: Int, startCol: Int): Vector[Vector[GameCell]] = {
+  //
+  //    @tailrec
+  //    def revealRecursive(currentGrid: Vector[Vector[GameCell]], queue: Queue[(Int, Int)], visited: Set[(Int, Int)]): Vector[Vector[GameCell]] = {
+  //      if (queue.isEmpty) {
+  //        currentGrid
+  //      } else {
+  //        val ((row, col), remainingQueue) = queue.dequeue
+  //
+  //        if (visited.contains((row, col))) {
+  //          revealRecursive(currentGrid, remainingQueue, visited)
+  //        } else {
+  //          val cell = currentGrid(row)(col)
+  //
+  //          // skip if isRevealed/isFlagged/mine
+  //          if (cell.isRevealed || cell.isFlagged || cell.isMine) {
+  //            revealRecursive(currentGrid, remainingQueue, visited + ((row, col)))
+  //          } else {
+  //            // reveal
+  //            val gridWithRevealed = updateCell(currentGrid, row, col)(_.copy(isRevealed = true))
+  //
+  //            val newQueue =
+  //              if (cell.adjacentMines == 0) {
+  //                val neighbors = getNeighbors(gridWithRevealed, row, col)
+  //                val unrevealedNeighbors = neighbors.filter { case (nr, nc) =>
+  //                  val neighborCell = gridWithRevealed(nr)(nc)
+  //                  !visited.contains((nr, nc)) && !neighborCell.isRevealed && !neighborCell.isFlagged
+  //                }
+  //                remainingQueue.enqueueAll(unrevealedNeighbors)
+  //              } else {
+  //                remainingQueue
+  //              }
+  //
+  //            revealRecursive(gridWithRevealed, newQueue, visited + ((row, col)))
+  //          }
+  //        }
+  //      }
+  //    }
+  //
+  //    revealRecursive(grid, Queue((startRow, startCol)), Set.empty)
+  //  }
 
 
   def revealAllMines(grid: Vector[Vector[GameCell]]): Vector[Vector[GameCell]] = {
@@ -66,17 +115,14 @@ object GameLogic {
       None
   }
 
-  def calculateFinalScore(
-                           state: GameState,
-                           isGameOver: Boolean = false
-                         ): Option[(Long, Long, Int, Long)] = {
+  def calculateFinalScore(state: GameState, isGameOver: Boolean = false): Option[(Long, Long, Int, Long)] = {
     if (state.levelCompleted) None
     else {
-      val duration     = java.time.Duration.between(state.startTime, java.time.Instant.now()).toSeconds
-      val timePenalty  = duration * 2
+      val duration = java.time.Duration.between(state.startTime, java.time.Instant.now()).toSeconds
+      val timePenalty = duration * 2
       val clickPenalty = state.clickCount * 10
 
-      val baseScore  = if (isGameOver) 0L else state.score
+      val baseScore = if (isGameOver) 0L else state.score
       val finalScore = if (isGameOver) 0L else (state.score - timePenalty - clickPenalty).max(0)
 
       Some((baseScore, duration, state.clickCount, finalScore))
