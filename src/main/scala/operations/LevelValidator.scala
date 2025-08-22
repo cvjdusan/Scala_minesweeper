@@ -8,9 +8,9 @@ trait LevelValidator {
 
 object LevelValidator extends LevelValidator {
   private val difficultyLimits: Map[String, (Int, Int, Int)] = Map(
-    "Beginner" -> (8, 8, 10),    // max 8x8, max 10 mina
-    "Normal" -> (16, 16, 40),    // max 16x16, max 40 mina
-    "Advanced" -> (30, 16, 99)   // max 30x16, max 99 mina
+    "Beginner" -> (8, 8, 10),    // max 8x8, max 10 mines
+    "Normal" -> (16, 16, 40),    // max 16x16, max 40 mines
+    "Advanced" -> (30, 16, 99)   // max 30x16, max 99 mines
   )
 
   override def validateLevel(grid: Vector[Vector[GameCell]], difficulty: String): Either[String, Boolean] = {

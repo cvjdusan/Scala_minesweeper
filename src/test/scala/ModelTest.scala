@@ -104,15 +104,15 @@ class ModelTest extends AnyFunSuite with Matchers {
       suggested = Set.empty
     )
     
-    state.rows shouldBe 3
-    state.cols shouldBe 2
+    state.rowsLength shouldBe 3
+    state.colsLength shouldBe 2
   }
 
   test("GameState should handle empty grid dimensions") {
     val emptyState = GameState.empty
     
-    emptyState.rows shouldBe 0
-    emptyState.cols shouldBe 0
+    emptyState.rowsLength shouldBe 0
+    emptyState.colsLength shouldBe 0
   }
 
   test("GameState should handle single row grid dimensions") {
@@ -126,8 +126,8 @@ class ModelTest extends AnyFunSuite with Matchers {
       suggested = Set.empty
     )
     
-    state.rows shouldBe 1
-    state.cols shouldBe 2
+    state.rowsLength shouldBe 1
+    state.colsLength shouldBe 2
   }
 
   test("GameState should handle single column grid dimensions") {
@@ -144,8 +144,8 @@ class ModelTest extends AnyFunSuite with Matchers {
       suggested = Set.empty
     )
     
-    state.rows shouldBe 2
-    state.cols shouldBe 1
+    state.rowsLength shouldBe 2
+    state.colsLength shouldBe 1
   }
 
   test("GameState should check game lost correctly") {

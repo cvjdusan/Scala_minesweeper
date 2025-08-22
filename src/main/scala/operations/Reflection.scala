@@ -1,15 +1,16 @@
 package operations
+
 import model.GameCell
 import operations.Sector
 
 case class Reflection(axis: String, axisPosition: Option[Int] = None) extends Isometry {
-  // isExpanding se postavlja preko ExpandingIsometry trait-a
+
 
   override def apply[A](g: Vector[Vector[A]]): Vector[Vector[A]] = {
     val rows = g.length
     val cols = if (rows == 0) 0 else g.head.length
     if (rows == 0 || cols == 0) return g
-    
+
     val sector = Sector(0, 0, rows - 1, cols - 1)
     val pivot = axis.toLowerCase match {
       case "horizontal" => (axisPosition.getOrElse(rows / 2), 0)
@@ -17,7 +18,7 @@ case class Reflection(axis: String, axisPosition: Option[Int] = None) extends Is
       case "diagonal-main" | "diagonal-secondary" => (rows / 2, cols / 2)
       case _ => (rows / 2, cols / 2)
     }
-    
+
     applyToSector(g, sector, pivot)
   }
 
@@ -35,16 +36,16 @@ case class Reflection(axis: String, axisPosition: Option[Int] = None) extends Is
           val pos = axisPosition.getOrElse(pivotRow)
           // (r,c) → (2k - r, c)
           (2 * pos - srcRow, srcCol)
-          
+
         case "vertical" =>
           val pos = axisPosition.getOrElse(pivotCol)
           // (r,c) → (r, 2k - c)
           (srcRow, 2 * pos - srcCol)
-          
+
         case "diagonal-main" =>
           // (r,c) → (c, r)
           (srcCol, srcRow)
-          
+
         case "diagonal-secondary" =>
           // Formula: (r,c) → (c', r') kao kompozicija glavne + rotacija 180°
           // Prvo refleksija oko glavne dijagonale: (r,c) → (c, r)
@@ -54,10 +55,10 @@ case class Reflection(axis: String, axisPosition: Option[Int] = None) extends Is
           val rotatedRow = pivotRow - (reflectedRow - pivotRow)
           val rotatedCol = pivotCol - (reflectedCol - pivotCol)
           (rotatedRow, rotatedCol)
-          
-        case _ => (srcRow, srcCol) // nepoznata osa - vraća original
+
+        case _ => (srcRow, srcCol) // unknown axis, return original
       }
-      
+
       (srcRow, srcCol, tgtRow, tgtCol)
     }
   }

@@ -8,7 +8,7 @@ final case class GameCell(
                          )
 
 object GameCellOps {
-  implicit class GameCellExtensions(val cell: GameCell) extends AnyVal {
+  implicit class GameCellExtensions(val cell: GameCell) { // extends AnyVal {
     def when(condition: Boolean)(f: GameCell => GameCell): GameCell = {
       if (condition) f(cell) else cell
     }

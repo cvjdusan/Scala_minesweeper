@@ -26,9 +26,9 @@ case class GameState
 
   def addSuggested(move: (Int, Int)): GameState = copy(suggested = suggested + move)
 
-  def rows: Int = grid.length
+  def rowsLength: Int = grid.length
 
-  def cols: Int = if (grid.isEmpty) 0 else grid.head.length
+  def colsLength: Int = if (grid.isEmpty) 0 else grid.head.length
 
   def isGameLost: Boolean =
     grid.exists(_.exists(c => c.isRevealed && c.isMine))
@@ -44,7 +44,4 @@ object GameState {
     suggested = Set.empty
   )
 
-  implicit def gameStateToString(state: GameState): String = {
-    s"GameState(score=${state.score}, clicks=${state.clickCount}, rows=${state.rows}, cols=${state.cols})"
-  }
 } 

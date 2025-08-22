@@ -6,10 +6,10 @@ import java.time.Instant
 
 class GameController() {
 
-  // Parcijalno primenjene funkcije - funkcionalne konstrukcije
+  // Partial functions
   val decreaseScoreBy10: GameState => GameState = _.decreaseScore(10)
   val decreaseScoreBy20: GameState => GameState = _.decreaseScore(20)
-  val decreaseScoreBy5: GameState => GameState = _.decreaseScore(5)
+  val decreaseScoreBy5:  GameState => GameState = (gs: GameState) => gs.decreaseScore(5)
 
   def initGrid(r: Int, c: Int): GameState = {
     val newGrid = GameLogic.initGridWithoutMines(r, c)
@@ -91,8 +91,8 @@ class GameController() {
     }
   }
 
-  def applyIsometry(state: GameState, iso: Isometry): GameState = {
-    val transformedGrid = iso(state.grid)
+  def applyIsometry(state: GameState, isometry: Isometry): GameState = {
+    val transformedGrid = isometry(state.grid)     //isometry.apply(state.grid)
     val recalculatedGrid = GridOperations.recalculateAdjacent(transformedGrid)
     state.withGrid(recalculatedGrid)
   }
@@ -112,13 +112,13 @@ class GameController() {
   }
 
   def addRowBegin(state: GameState): GameState = {
-    val emptyRow = Vector.fill(state.cols)(GameCell(false))
+    val emptyRow = Vector.fill(state.colsLength)(GameCell(false))
     val newGrid = emptyRow +: state.grid
     state.withGrid(newGrid)
   }
 
   def addRowEnd(state: GameState): GameState = {
-    val emptyRow = Vector.fill(state.cols)(GameCell(false))
+    val emptyRow = Vector.fill(state.colsLength)(GameCell(false))
     val newGrid = state.grid :+ emptyRow
     state.withGrid(newGrid)
   }
@@ -134,29 +134,29 @@ class GameController() {
   }
 
   def removeRowBegin(state: GameState): GameState = {
-    if (state.rows > 1) {
+    if (state.rowsLength > 1) {
       val newGrid = state.grid.tail
       state.withGrid(newGrid)
     } else state
   }
 
   def removeRowEnd(state: GameState): GameState = {
-    if (state.rows > 1) {
+    if (state.rowsLength > 1) {
       val newGrid = state.grid.init
       state.withGrid(newGrid)
     } else state
   }
 
   def removeColumnBegin(state: GameState): GameState = {
-    if (state.cols > 1) {
-      val newGrid = state.grid.map(_.tail)
+    if (state.colsLength > 1) {
+      val newGrid = state.grid.map(r => r.tail)
       state.withGrid(newGrid)
     } else state
   }
 
   def removeColumnEnd(state: GameState): GameState = {
-    if (state.cols > 1) {
-      val newGrid = state.grid.map(_.init)
+    if (state.colsLength > 1) {
+      val newGrid = state.grid.map(r => r.init)
       state.withGrid(newGrid)
     } else state
   }
@@ -246,10 +246,10 @@ class GameController() {
       .filterNot(_.isMine)
       .forall(_.isRevealed)
 
-  def rows(state: GameState): Int = state.rows
+  def rows(state: GameState): Int = state.rowsLength
 
-  def cols(state: GameState): Int = state.cols
+  def cols(state: GameState): Int = state.colsLength
 
-  def inBounds(state: GameState, r: Int, c: Int): Boolean = r >= 0 && r < state.rows && c >= 0 && c < state.cols
+  def inBounds(state: GameState, r: Int, c: Int): Boolean = r >= 0 && r < state.rowsLength && c >= 0 && c < state.colsLength
 
 }

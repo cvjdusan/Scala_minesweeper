@@ -40,8 +40,8 @@ class GameControllerTest extends AnyFunSuite with Matchers {
     val controller = new GameController()
     val state = controller.initGrid(5, 7)
 
-    state.rows shouldBe 5
-    state.cols shouldBe 7
+    state.rowsLength shouldBe 5
+    state.colsLength shouldBe 7
     state.grid.length shouldBe 5
     state.grid.head.length shouldBe 7
     state.clickCount shouldBe 0
@@ -154,8 +154,8 @@ class GameControllerTest extends AnyFunSuite with Matchers {
 
     newState.grid should not equal state.grid
 
-    newState.rows shouldBe state.rows
-    newState.cols shouldBe state.cols
+    newState.rowsLength shouldBe state.rowsLength
+    newState.colsLength shouldBe state.colsLength
 
     // after rotation it shoudl be:
     // (0,0) -> (0, 2)
@@ -173,8 +173,8 @@ class GameControllerTest extends AnyFunSuite with Matchers {
 
     val newState = controller.addRowBegin(state)
 
-    newState.rows shouldBe 4
-    newState.cols shouldBe 3
+    newState.rowsLength shouldBe 4
+    newState.colsLength shouldBe 3
 
     newState.grid.last.forall(cell => !cell.isMine) shouldBe true
   }
@@ -185,8 +185,8 @@ class GameControllerTest extends AnyFunSuite with Matchers {
 
     val newState = controller.addRowEnd(state)
 
-    newState.rows shouldBe 4
-    newState.cols shouldBe 3
+    newState.rowsLength shouldBe 4
+    newState.colsLength shouldBe 3
 
     newState.grid.last.forall(cell => !cell.isMine) shouldBe true
   }
@@ -197,8 +197,8 @@ class GameControllerTest extends AnyFunSuite with Matchers {
 
     val newState = controller.addColumnBegin(state)
 
-    newState.rows shouldBe 3
-    newState.cols shouldBe 4
+    newState.rowsLength shouldBe 3
+    newState.colsLength shouldBe 4
 
     newState.grid.last.forall(cell => !cell.isMine) shouldBe true
   }
@@ -209,8 +209,8 @@ class GameControllerTest extends AnyFunSuite with Matchers {
 
     val newState = controller.addColumnEnd(state)
 
-    newState.rows shouldBe 3
-    newState.cols shouldBe 4
+    newState.rowsLength shouldBe 3
+    newState.colsLength shouldBe 4
     newState.grid.forall(row => !row(3).isMine) shouldBe true
   }
 
@@ -220,8 +220,8 @@ class GameControllerTest extends AnyFunSuite with Matchers {
 
     val newState = controller.removeRowBegin(state)
 
-    newState.rows shouldBe 2
-    newState.cols shouldBe 3
+    newState.rowsLength shouldBe 2
+    newState.colsLength shouldBe 3
   }
 
   test("GameController should not remove row when only one row exists") {
@@ -230,7 +230,7 @@ class GameControllerTest extends AnyFunSuite with Matchers {
 
     val newState = controller.removeRowBegin(state)
 
-    newState.rows shouldBe 1
+    newState.rowsLength shouldBe 1
     newState should equal(state)
   }
 
@@ -240,8 +240,8 @@ class GameControllerTest extends AnyFunSuite with Matchers {
 
     val newState = controller.removeRowEnd(state)
 
-    newState.rows shouldBe 2
-    newState.cols shouldBe 3
+    newState.rowsLength shouldBe 2
+    newState.colsLength shouldBe 3
   }
 
   test("GameController should remove column at beginning correctly") {
@@ -250,8 +250,8 @@ class GameControllerTest extends AnyFunSuite with Matchers {
 
     val newState = controller.removeColumnBegin(state)
 
-    newState.rows shouldBe 3
-    newState.cols shouldBe 2
+    newState.rowsLength shouldBe 3
+    newState.colsLength shouldBe 2
   }
 
   test("GameController should not remove column when only one column exists") {
@@ -260,7 +260,7 @@ class GameControllerTest extends AnyFunSuite with Matchers {
 
     val newState = controller.removeColumnBegin(state)
 
-    newState.cols shouldBe 1
+    newState.colsLength shouldBe 1
     newState should equal(state)
   }
 
@@ -270,8 +270,8 @@ class GameControllerTest extends AnyFunSuite with Matchers {
 
     val newState = controller.removeColumnEnd(state)
 
-    newState.rows shouldBe 3
-    newState.cols shouldBe 2
+    newState.rowsLength shouldBe 3
+    newState.colsLength shouldBe 2
   }
 
   test("GameController should clear sector correctly") {

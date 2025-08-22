@@ -15,11 +15,11 @@ case class Translation(dx: Int, dy: Int) extends Isometry {
     TranslationDebug.callCount += 1
 
     println(s"Input grid size: ${g.length}x${if (g.nonEmpty) g.head.length else 0}")
-    
+
     val rows = g.length
     val cols = if (rows == 0) 0 else g.head.length
     if (rows == 0 || cols == 0) return g
-    
+
     val sector = Sector(0, 0, rows - 1, cols - 1)
     val pivot = (0, 0) // ignore pivot for translation
 
@@ -28,8 +28,6 @@ case class Translation(dx: Int, dy: Int) extends Isometry {
     println(s"Translation.apply finished, result grid size: ${result.length}x${if (result.nonEmpty) result.head.length else 0}")
     result
   }
-
-  // isExpanding se postavlja preko ExpandingIsometry trait-a
 
   override def inverse: Isometry = Translation(-dx, -dy)
 
