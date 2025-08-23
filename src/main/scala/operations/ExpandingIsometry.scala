@@ -6,7 +6,7 @@ import model.GameCell
 trait ExpandingIsometry extends Isometry {
   override def isExpanding: Boolean = true
 
-  override protected def expandGrid[A](grid: Vector[Vector[A]], mappedCoordinates: Seq[(Int, Int, Int, Int)]): (Vector[Vector[A]], Int, Int) = {
+  override protected def expandGrid(grid: Vector[Vector[GameCell]], mappedCoordinates: Seq[(Int, Int, Int, Int)]): (Vector[Vector[GameCell]], Int, Int) = {
     if (mappedCoordinates.isEmpty) return (grid, 0, 0)
 
     val currentRows = grid.length
@@ -14,7 +14,7 @@ trait ExpandingIsometry extends Isometry {
 
     if (currentRows == 0 || currentCols == 0) return (grid, 0, 0)
 
-    //  min/max koordinate iz mapiranja
+    //  min/max from target
     val targetRows = mappedCoordinates.map(_._3)
     val targetCols = mappedCoordinates.map(_._4)
 
@@ -23,33 +23,37 @@ trait ExpandingIsometry extends Isometry {
     val minCol = targetCols.min
     val maxCol = targetCols.max
 
-    // izr potrebne dimenzije
-    val totalRows = math.max(currentRows, maxRow + 1) - math.min(0, minRow)
-    val totalCols = math.max(currentCols, maxCol + 1) - math.min(0, minCol)
+    if (minRow >= 0 && minCol >= 0 && maxRow < currentRows && maxCol < currentCols) {
+      // not needed
+      return (grid, 0, 0)
+    }
 
-    // izr offset za pozicioniranje originalnog grida
+    val neededRows = maxRow + 1
+    val neededCols = maxCol + 1
+
+    // if negative we have to add
     val offsetRow = if (minRow < 0) -minRow else 0
     val offsetCol = if (minCol < 0) -minCol else 0
 
-    // Kreiraj prazan grid
-    val empty = grid(0)(0) match {
-      case _: GameCell => GameCell(false).asInstanceOf[A]
-      case other => other
-    }
+    //max(current, needed) + offset top/left
+    val totalRows = math.max(currentRows, neededRows) + offsetRow
+    val totalCols = math.max(currentCols, neededCols) + offsetCol
 
-    val expandedGrid = Vector.tabulate(totalRows) { row =>
-      Vector.tabulate(totalCols) { col =>
-        // Originalni grid se pomera za offset
-        val originalRow = row - offsetRow
-        val originalCol = col - offsetCol
-        if (originalRow >= 0 && originalRow < currentRows &&
-          originalCol >= 0 && originalCol < currentCols) {
-          grid(originalRow)(originalCol)
-        } else {
+    val empty: GameCell = GameCell(false)
+
+    val expandedGrid: Vector[Vector[GameCell]] =
+      Vector.tabulate(totalRows, totalCols) { (row, col) =>
+        val r0 = row - offsetRow
+        val c0 = col - offsetCol
+        // if in range of old, use it
+        if (r0 >= 0 && r0 < currentRows && c0 >= 0 && c0 < currentCols)
+          grid(r0)(c0)
+        else {
+          // means new space
           empty
         }
       }
-    }
+
 
     (expandedGrid, offsetRow, offsetCol)
   }

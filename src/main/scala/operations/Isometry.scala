@@ -4,7 +4,7 @@ import model.GameCell
 import operations.Sector
 
 trait Isometry {
-  def apply[A](matrix: Vector[Vector[A]]): Vector[Vector[A]]
+  def apply(matrix: Vector[Vector[GameCell]]): Vector[Vector[GameCell]]
 
   def isExpanding: Boolean = false
 
@@ -14,8 +14,7 @@ trait Isometry {
 
   def >>>(other: Isometry): Isometry = new ComposedIsometry(this, other)
 
-  def applyToSector[A](grid: Vector[Vector[A]], sector: Sector, pivot: (Int, Int)): Vector[Vector[A]] = {
-
+  def applyToSector(grid: Vector[Vector[GameCell]], sector: Sector, pivot: (Int, Int)): Vector[Vector[GameCell]] = {
     val mappedCoordinates = calculateMappedCoordinates(sector, pivot)
     println(s"applyToSector: isExpanding=$isExpanding, mappedCoordinates=$mappedCoordinates")
 
@@ -27,8 +26,10 @@ trait Isometry {
       (grid, 0, 0)
     }
 
-
     var result = workingGrid
+
+
+    result = clearOriginalNotInImage(result, sector, mappedCoordinates, offsetRow, offsetCol)
 
     if (!isTransparent) {
       result = clearOriginalSector(result, sector, offsetRow, offsetCol)
@@ -45,8 +46,7 @@ trait Isometry {
         val sourceCell = grid(srcRow)(srcCol)
         println(s"  Source cell at ($srcRow,$srcCol): $sourceCell")
 
-        if (adjustedTgtRow >= 0 && adjustedTgtRow < result.length &&
-          adjustedTgtCol >= 0 && adjustedTgtCol < result(0).length) {
+        if (adjustedTgtRow >= 0 && adjustedTgtRow < result.length && adjustedTgtCol >= 0 && adjustedTgtCol < result(0).length) {
 
           if (isTransparent) {
             // Transparent overlay OR logika za mine
@@ -59,7 +59,7 @@ trait Isometry {
             result = result.updated(adjustedTgtRow, result(adjustedTgtRow).updated(adjustedTgtCol, sourceCell))
           }
         } else if (!isExpanding) {
-          // Non-expanding mode - drop OOB koordinate (ne radi ništa)
+          // out of bounds
           println(s"  OOB coordinate dropped: ($adjustedTgtRow,$adjustedTgtCol)")
         }
       } else {
@@ -71,49 +71,54 @@ trait Isometry {
   }
 
   // Default
-  protected def expandGrid[A](grid: Vector[Vector[A]], mappedCoordinates: Seq[(Int, Int, Int, Int)]): (Vector[Vector[A]], Int, Int) = {
+  protected def expandGrid(grid: Vector[Vector[GameCell]], mappedCoordinates: Seq[(Int, Int, Int, Int)]): (Vector[Vector[GameCell]], Int, Int) = {
     (grid, 0, 0)
   }
 
-  protected def combineCells[A](sourceCell: A, targetCell: A): A = {
-    // Default
+  protected def combineCells(sourceCell: GameCell, targetCell: GameCell): GameCell =
     sourceCell
-  }
 
   protected def calculateMappedCoordinates(sector: Sector, pivot: (Int, Int)): Seq[(Int, Int, Int, Int)]
 
-  private def clearOriginalSector[A](grid: Vector[Vector[A]], sector: Sector, offsetRow: Int = 0, offsetCol: Int = 0): Vector[Vector[A]] = {
+  private def clearOriginalSector(grid: Vector[Vector[GameCell]],
+                                  sector: Sector,
+                                  offsetRow: Int = 0,
+                                  offsetCol: Int = 0): Vector[Vector[GameCell]] = {
     grid.zipWithIndex.map { case (row, rowIdx) =>
       row.zipWithIndex.map { case (cell, colIdx) =>
         val adjustedRow = rowIdx - offsetRow
         val adjustedCol = colIdx - offsetCol
-
-        if (sector.contains(adjustedRow, adjustedCol)) {
-          // clear mine
-          if (cell.isInstanceOf[GameCell]) {
-            cell.asInstanceOf[GameCell].copy(isMine = false).asInstanceOf[A]
-          } else {
-            cell
-          }
-        } else {
-          cell
-        }
+        if (sector.contains(adjustedRow, adjustedCol)) cell.copy(isMine = false) else cell
       }
     }
   }
 
-  def applyNTimes(n: Int): Isometry = {
-    if (n <= 0) IdentityIsometry
-    else if (n == 1) this
-    else {
-      val half = applyNTimes(n / 2)
-      if (n % 2 == 0) half >>> half else half >>> half >>> this
-    }
-  }
-
-
   protected[operations] def calculateMappedCoordinatesForComposition(sector: Sector, pivot: (Int, Int)): Seq[(Int, Int, Int, Int)] = {
     calculateMappedCoordinates(sector, pivot)
   }
+
+  private def clearOriginalNotInImage(
+                                       grid: Vector[Vector[GameCell]],
+                                       sector: Sector,
+                                       mapped: Seq[(Int, Int, Int, Int)],
+                                       offsetRow: Int,
+                                       offsetCol: Int
+                                     ): Vector[Vector[GameCell]] = {
+    grid.zipWithIndex.map { case (row, r) =>
+      row.zipWithIndex.map { case (cell, c) =>
+        val rr = r - offsetRow
+        val cc = c - offsetCol
+
+        val inOriginal =
+          rr >= sector.topLeftRow && rr <= sector.bottomRightRow &&
+            cc >= sector.topLeftCol && cc <= sector.bottomRightCol
+
+        val inImage = mapped.exists { case (_, _, tr, tc) => tr == rr && tc == cc }
+
+        if (inOriginal && !inImage) cell.copy(isMine = false) else cell
+      }
+    }
+  }
+
 
 }

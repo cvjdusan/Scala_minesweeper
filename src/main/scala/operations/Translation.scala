@@ -11,7 +11,7 @@ object TranslationDebug {
 
 case class Translation(dx: Int, dy: Int) extends Isometry {
 
-  override def apply[A](g: Vector[Vector[A]]): Vector[Vector[A]] = {
+  override def apply(g: Vector[Vector[GameCell]]): Vector[Vector[GameCell]] = {
     TranslationDebug.callCount += 1
 
     println(s"Input grid size: ${g.length}x${if (g.nonEmpty) g.head.length else 0}")

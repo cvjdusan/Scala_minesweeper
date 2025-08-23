@@ -1,11 +1,13 @@
 package operations
 
+import model.GameCell
+
 case object IdentityIsometry extends Isometry {
   override def isExpanding: Boolean = false
 
   override def isTransparent: Boolean = true
 
-  override def apply[A](grid: Vector[Vector[A]]): Vector[Vector[A]] = grid
+  override def apply(grid: Vector[Vector[GameCell]]): Vector[Vector[GameCell]] = grid
 
   override def inverse: Isometry = this
 

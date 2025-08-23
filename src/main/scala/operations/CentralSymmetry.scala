@@ -1,8 +1,10 @@
 package operations
 
+import model.GameCell
+
 case class CentralSymmetry() extends Isometry {
 
-  override def apply[A](g: Vector[Vector[A]]): Vector[Vector[A]] = {
+  override def apply(g: Vector[Vector[GameCell]]): Vector[Vector[GameCell]] = {
     val rows = g.length
     val cols = if (rows == 0) 0 else g.head.length
     if (rows == 0 || cols == 0) return g

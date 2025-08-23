@@ -1,12 +1,14 @@
 package operations
 
+import model.GameCell
+
 
 case class ComposedIsometry(first: Isometry, second: Isometry) extends Isometry {
   override def isExpanding: Boolean = first.isExpanding || second.isExpanding
 
   override def isTransparent: Boolean = first.isTransparent && second.isTransparent
 
-  override def apply[A](grid: Vector[Vector[A]]): Vector[Vector[A]] = {
+  override def apply(grid: Vector[Vector[GameCell]]): Vector[Vector[GameCell]] = {
     require(grid.nonEmpty && grid.head.nonEmpty, "Grid must not be empty")
     second.apply(first.apply(grid))
   }
@@ -14,12 +16,11 @@ case class ComposedIsometry(first: Isometry, second: Isometry) extends Isometry 
   override def inverse: Isometry = new ComposedIsometry(second.inverse, first.inverse)
 
 
-  override def applyToSector[A](grid: Vector[Vector[A]], sector: Sector, pivot: (Int, Int)): Vector[Vector[A]] = {
+  override def applyToSector(grid: Vector[Vector[GameCell]], sector: Sector, pivot: (Int, Int)): Vector[Vector[GameCell]] = {
     val intermediateGrid = first.applyToSector(grid, sector, pivot)
     second.applyToSector(intermediateGrid, sector, pivot)
   }
 
-  // Za kompoziciju, mapirane koordinate su kompozicija mapiranja
   protected def calculateMappedCoordinates(sector: Sector, pivot: (Int, Int)): Seq[(Int, Int, Int, Int)] = {
     val firstMapped = first.calculateMappedCoordinatesForComposition(sector, pivot)
 
