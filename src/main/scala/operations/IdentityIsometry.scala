@@ -11,7 +11,6 @@ case object IdentityIsometry extends Isometry {
 
   override def inverse: Isometry = this
 
-  // Identity transformacija  sve koordinate ostaju iste
   protected def calculateMappedCoordinates(sector: Sector, pivot: (Int, Int)): Seq[(Int, Int, Int, Int)] = {
     for {
       srcRow <- sector.topLeftRow to sector.bottomRightRow

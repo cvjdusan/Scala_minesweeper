@@ -47,7 +47,7 @@ case class Reflection(axis: String, axisPosition: Option[Int] = None) extends Is
           (srcCol, srcRow)
 
         case "diagonal-secondary" =>
-          // Formula: (r,c) → (c', r') kao kompozicija glavne + rotacija 180°
+          // (r,c) → (c', r') kao kompozicija glavne + rotacija 180°
           // Prvo refleksija oko glavne dijagonale: (r,c) → (c, r)
           // Zatim rotacija 180°: (c, r) → (-c, -r) + pivot
           val reflectedRow = srcCol
