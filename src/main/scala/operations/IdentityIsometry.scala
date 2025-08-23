@@ -1,6 +1,5 @@
 package operations
 
-
 case object IdentityIsometry extends Isometry {
   override def isExpanding: Boolean = false
 
