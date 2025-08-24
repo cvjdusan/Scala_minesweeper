@@ -581,8 +581,44 @@ object MinesweeperApp extends JFXApp3 {
 
       val result = isometries.result()
       if (result.nonEmpty) {
-        Some(IsometryComposer.compose(result: _*))
+        try {
+          val composedIsometry = IsometryComposer.compose(result: _*)
+
+          Some(composedIsometry)
+        } catch {
+          case e: IllegalArgumentException =>
+            new Alert(AlertType.Error) {
+              title = "Composition Error"
+              headerText = "Invalid isometry parameters"
+              contentText = s"""
+                |Failed to create composition due to invalid parameters:
+                |
+                |Error: ${e.getMessage}
+                |
+              """.stripMargin
+            }.showAndWait()
+            None
+            
+          case e: Exception =>
+            new Alert(AlertType.Error) {
+              title = "Composition Error"
+              headerText = "Unexpected error occurred"
+              contentText = s"""
+                |Failed to create composition due to unexpected error:
+                |
+                |Error: ${e.getMessage}
+                |Please try again or check the console for more details.
+              """.stripMargin
+            }.showAndWait()
+            None
+        }
       } else {
+        new Alert(AlertType.Warning) {
+          title = "No Isometries Selected"
+          headerText = "Cannot create composition"
+          contentText = "Please select at least one isometry to compose."
+        }.showAndWait()
+
         None
       }
     }
