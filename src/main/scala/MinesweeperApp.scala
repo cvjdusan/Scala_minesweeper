@@ -8,7 +8,7 @@ import scalafx.scene.layout.{BorderPane, GridPane, HBox, StackPane, VBox}
 import scalafx.stage.FileChooser
 
 import java.io.{BufferedReader, File, FileReader}
-import operations.{CentralSymmetry, ExpandingIsometry, IsometryComposer, Reflection, Rotation, Translation, TransparentIsometry}
+import operations.{CentralSymmetry, ComposedIsometry, ExpandingIsometry, Isometry, IsometryComposer, NamedIsometryRegistry, Reflection, Rotation, Translation, TransparentIsometry}
 import scalafx.Includes.jfxObjectProperty2sfx
 
 import scala.util._
@@ -26,6 +26,13 @@ object MinesweeperApp extends JFXApp3 {
     "Beginner" -> Seq("Level 1", "Level 2", "Random"),
     "Normal" -> Seq("Level 1", "Level 2", "Random"),
     "Advanced" -> Seq("Level 1", "Level 2", "Random")
+  )
+
+  var isometryOptions = Seq(
+    "Rotate Clockwise", "Rotate Counterclockwise",
+    "Reflect Horizontally", "Reflect Vertically",
+    "Reflect Diagonal (Main)", "Reflect Diagonal (Secondary)",
+    "Central Symmetry", "Translation" //"Compose Isometries"
   )
 
   private def showGameOverMessage(): Unit = {
@@ -150,7 +157,7 @@ object MinesweeperApp extends JFXApp3 {
                     onAction = _ => loadGame(controller, mainLayout, scoreLabel, hintButton)
                   },
                   new MenuItem("Create level") {
-                    onAction = _ => createLevel(mainLayout)
+                    onAction = _ => createLevelEditor(controller, mainLayout, scoreLabel, hintButton)
                   },
                   new MenuItem("Results") {
                     onAction = _ => showResults()
@@ -359,15 +366,229 @@ object MinesweeperApp extends JFXApp3 {
     }
   }
 
-  private def createLevel(mainLayout: BorderPane): Unit = {
-    val controller = new GameController()
+  private def composeIsometries(expandingCheckbox: CheckBox, transparentCheckbox: CheckBox): Option[operations.Isometry] = {
+    val dialog = new Alert(AlertType.Confirmation) {
+      title = "Compose Isometries"
+      headerText = "Select isometries to compose"
+      contentText = "Choose which isometries you want to compose:"
+    }
+
+    val rotationCheckbox = new CheckBox("Rotation")
+    val reflectionCheckbox = new CheckBox("Reflection")
+    val centralCheckbox = new CheckBox("Central Symmetry")
+    val translationCheckbox = new CheckBox("Translation")
+
+    val rotationOptions = new ComboBox[String] {
+      items = ObservableBuffer("Clockwise", "Counterclockwise")
+      value = "Clockwise"
+      disable = true
+    }
+    val rotationCountField = new TextField {
+      text = "1"
+      promptText = "Count"
+      prefWidth = 50
+      disable = true
+    }
+    rotationCheckbox.onAction = _ => {
+      val enabled = rotationCheckbox.isSelected
+      rotationOptions.disable = !enabled
+      rotationCountField.disable = !enabled
+    }
+
+    val reflectionOptions = new ComboBox[String] {
+      items = ObservableBuffer("Horizontal", "Vertical", "Diagonal (Main)", "Diagonal (Secondary)")
+      value = "Horizontal"
+      disable = true
+    }
+    val reflectionCountField = new TextField {
+      text = "1"
+      promptText = "Count"
+      prefWidth = 50
+      disable = true
+    }
+    reflectionCheckbox.onAction = _ => {
+      val enabled = reflectionCheckbox.isSelected
+      reflectionOptions.disable = !enabled
+      reflectionCountField.disable = !enabled
+    }
+
+    val translationXField = new TextField {
+      text = "1"
+      promptText = "X offset"
+      prefWidth = 60
+      disable = true
+    }
+    val translationYField = new TextField {
+      text = "1"
+      promptText = "Y offset"
+      prefWidth = 60
+      disable = true
+    }
+    val translationCountField = new TextField {
+      text = "1"
+      promptText = "Count"
+      prefWidth = 50
+      disable = true
+    }
+    translationCheckbox.onAction = _ => {
+      val enabled = translationCheckbox.isSelected
+      translationXField.disable = !enabled
+      translationYField.disable = !enabled
+      translationCountField.disable = !enabled
+    }
+
+    val rotationLayout = new HBox {
+      spacing = 10
+      children = Seq(rotationCheckbox, rotationOptions, new Label("Count:"), rotationCountField)
+    }
+
+    val reflectionLayout = new HBox {
+      spacing = 10
+      children = Seq(reflectionCheckbox, reflectionOptions, new Label("Count:"), reflectionCountField)
+    }
+
+    val translationLayout = new HBox {
+      spacing = 10
+      children = Seq(
+        translationCheckbox,
+        new Label("X:"),
+        translationXField,
+        new Label("Y:"),
+        translationYField,
+        new Label("Count:"),
+        translationCountField
+      )
+    }
+
+    val optionsLayout = new VBox {
+      spacing = 10
+      children = Seq(
+        rotationLayout,
+        reflectionLayout,
+        centralCheckbox,
+        translationLayout
+      )
+    }
+
+    dialog.dialogPane().setContent(optionsLayout)
+
+    val result = dialog.showAndWait()
+    result.flatMap { _ =>
+      val expanding = expandingCheckbox.isSelected
+      val transparent = transparentCheckbox.isSelected
+
+      val isometries = Seq.newBuilder[Isometry]
+
+      if (rotationCheckbox.isSelected) {
+        val clockwise = rotationOptions.value.value == "Clockwise"
+        val count = Try(rotationCountField.text.value.toInt).getOrElse(1)
+        val rotation = if (transparent) {
+          if (expanding) {
+            new Rotation(clockwise) with ExpandingIsometry with TransparentIsometry
+          } else {
+            new Rotation(clockwise) with TransparentIsometry
+          }
+        } else {
+          if (expanding) {
+            new Rotation(clockwise) with ExpandingIsometry
+          } else {
+            new Rotation(clockwise)
+          }
+        }
+        for (_ <- 1 to count) {
+          isometries += rotation
+        }
+      }
+
+
+      if (reflectionCheckbox.isSelected) {
+        val axis = reflectionOptions.value.value match {
+          case "Horizontal" => "horizontal"
+          case "Vertical" => "vertical"
+          case "Diagonal (Main)" => "diagonal-main"
+          case "Diagonal (Secondary)" => "diagonal-secondary"
+          case _ => "horizontal"
+        }
+        val reflection = if (transparent) {
+          if (expanding) {
+            new Reflection(axis, None) with ExpandingIsometry with TransparentIsometry
+          } else {
+            new Reflection(axis, None) with TransparentIsometry
+          }
+        } else {
+          if (expanding) {
+            new Reflection(axis, None) with ExpandingIsometry
+          } else {
+            new Reflection(axis, None)
+          }
+        }
+        val count = Try(reflectionCountField.text.value.toInt).getOrElse(1)
+
+        for (_ <- 1 to count) {
+          isometries += reflection
+        }
+      }
+
+      if (centralCheckbox.isSelected) {
+        val symmetry = if (transparent) {
+          if (expanding) {
+            new CentralSymmetry() with ExpandingIsometry with TransparentIsometry
+          } else {
+            new CentralSymmetry() with TransparentIsometry
+          }
+        } else {
+          if (expanding) {
+            new CentralSymmetry() with ExpandingIsometry
+          } else {
+            new CentralSymmetry()
+          }
+        }
+
+        isometries += symmetry
+      }
+
+      if (translationCheckbox.isSelected) {
+        val dx = Try(translationXField.text.value.toInt).getOrElse(1)
+        val dy = Try(translationYField.text.value.toInt).getOrElse(1)
+        val count = Try(translationCountField.text.value.toInt).getOrElse(1)
+
+        val finalDx = dx * count
+        val finalDy = dy * count
+
+        val translation = if (transparent) {
+          if (expanding) {
+            new Translation(finalDx, finalDy) with ExpandingIsometry with TransparentIsometry
+          } else {
+            new Translation(finalDx, finalDy) with TransparentIsometry
+          }
+        } else {
+          if (expanding) {
+            new Translation(finalDx, finalDy) with ExpandingIsometry
+          } else {
+            new Translation(finalDx, finalDy)
+          }
+        }
+        isometries += translation
+      }
+
+      val result = isometries.result()
+      if (result.nonEmpty) {
+        Some(IsometryComposer.compose(result: _*))
+      } else {
+        None
+      }
+    }
+  }
+
+  private def createLevelEditor(controller: GameController, mainLayout: BorderPane, scoreLabel: Label, hintButton: Button): Unit = {
     var levelState = controller.initGrid(5, 5)
     val originalLevelState = levelState
-
     val gridPane = new GridPane {
       hgap = 2
       vgap = 2
     }
+    hintButton.visible = false
+    scoreLabel.visible = false
 
     def refreshLevelView(): Unit = {
       gridPane.children.clear()
@@ -504,12 +725,6 @@ object MinesweeperApp extends JFXApp3 {
       }
     }
 
-    val isometryOptions = Seq(
-      "Rotate Clockwise", "Rotate Counterclockwise",
-      "Reflect Horizontally", "Reflect Vertically",
-      "Reflect Diagonal (Main)", "Reflect Diagonal (Secondary)",
-      "Central Symmetry", "Translation", "Compose Isometries"
-    )
 
     val isometryComboBox = new ComboBox[String] {
       items = ObservableBuffer(isometryOptions: _*)
@@ -531,7 +746,7 @@ object MinesweeperApp extends JFXApp3 {
     val bottomRightColField = new TextField {
       text = "2"
     }
-    
+
     val pivotLabel = new Label("Pivot:")
     val pivotRowField = new TextField {
       text = "1"
@@ -564,7 +779,7 @@ object MinesweeperApp extends JFXApp3 {
 
     val expandingCheckbox = new CheckBox("Expanding")
     val transparentCheckbox = new CheckBox("Transparent")
-    
+
     val optionsGrid = new GridPane {
       hgap = 5
       vgap = 5
@@ -572,82 +787,16 @@ object MinesweeperApp extends JFXApp3 {
       add(transparentCheckbox, 1, 0)
     }
 
-    def composeIsometries(): Option[operations.Isometry] = {
-      val dialog = new TextInputDialog(defaultValue = "rotation,reflection") {
-        title = "Compose Isometries"
-        headerText = "Enter isometries to compose (comma-separated)"
-        contentText = "Available: rotation,reflection,central,translation"
-      }
+    def updateIsometryOptions(): Unit = {
+      val savedNames = NamedIsometryRegistry.getAllNames
+      val customOptions = savedNames.filter(name => !MinesweeperApp.isometryOptions.contains(name))
+      if (customOptions.nonEmpty) {
+        MinesweeperApp.isometryOptions = MinesweeperApp.isometryOptions ++ customOptions
 
-      dialog.showAndWait().flatMap { input =>
-        val isometryNames = input.split(",").map(_.trim.toLowerCase)
-        val expanding = expandingCheckbox.isSelected
-        val transparent = transparentCheckbox.isSelected
-        
-        val isometries = isometryNames.toSeq.flatMap {
-          case "rotation" => 
-            if (transparent) {
-              if (expanding) {
-                Some(new Rotation(clockwise = true) with ExpandingIsometry with TransparentIsometry)
-              } else {
-                Some(new Rotation(clockwise = true) with TransparentIsometry)
-              }
-            } else {
-              if (expanding) {
-                Some(new Rotation(clockwise = true) with ExpandingIsometry)
-              } else {
-                Some(new Rotation(clockwise = true))
-              }
-            }
-          case "reflection" => 
-            if (transparent) {
-              if (expanding) {
-                Some(new Reflection("horizontal", None) with ExpandingIsometry with TransparentIsometry)
-              } else {
-                Some(new Reflection("horizontal", None) with TransparentIsometry)
-              }
-            } else {
-              if (expanding) {
-                Some(new Reflection("horizontal", None) with ExpandingIsometry)
-              } else {
-                Some(new Reflection("horizontal", None))
-              }
-            }
-          case "central" => 
-            if (transparent) {
-              if (expanding) {
-                Some(new CentralSymmetry() with ExpandingIsometry with TransparentIsometry)
-              } else {
-                Some(new CentralSymmetry() with TransparentIsometry)
-              }
-            } else {
-              if (expanding) {
-                Some(new CentralSymmetry() with ExpandingIsometry)
-              } else {
-                Some(new CentralSymmetry())
-              }
-            }
-          case "translation" => 
-            if (transparent) {
-              if (expanding) {
-                Some(new Translation(1, 1) with ExpandingIsometry with TransparentIsometry)
-              } else {
-                Some(new Translation(1, 1) with TransparentIsometry)
-              }
-            } else {
-              if (expanding) {
-                Some(new Translation(1, 1) with ExpandingIsometry)
-              } else {
-                Some(new Translation(1, 1))
-              }
-            }
-          case _ => None
-        }
-
-        if (isometries.nonEmpty) {
-          Some(IsometryComposer.compose(isometries: _*))
-        } else {
-          None
+        try {
+          isometryComboBox.items = ObservableBuffer(MinesweeperApp.isometryOptions: _*)
+        } catch {
+          case _: Throwable =>
         }
       }
     }
@@ -729,13 +878,13 @@ object MinesweeperApp extends JFXApp3 {
                     if (expanding) {
                       new Reflection("vertical", None) with ExpandingIsometry with TransparentIsometry
                     } else {
-                      new Reflection("vertical", None) with TransparentIsometry
+                      new Reflection("horizontal", None) with TransparentIsometry
                     }
                   } else {
                     if (expanding) {
                       new Reflection("vertical", None) with ExpandingIsometry
                     } else {
-                      new Reflection("vertical", None)
+                      new Reflection("horizontal", None)
                     }
                   }
                   levelState = controller.applyIsometryToSector(levelState, reflection, sector, pivot)
@@ -815,16 +964,25 @@ object MinesweeperApp extends JFXApp3 {
                   levelState = controller.applyIsometryToSector(levelState, translation, sector, pivot)
                   refreshLevelView()
                 case "Compose Isometries" =>
-                  val composedIsometry = composeIsometries()
-                  composedIsometry.foreach { iso =>
-                    levelState = controller.applyIsometryToSector(levelState, iso, sector, pivot)
+
+                  val composedIsometry = composeIsometries(expandingCheckbox, transparentCheckbox)
+                  composedIsometry.foreach { newIso =>
+                    levelState = controller.applyIsometryToSector(levelState, newIso, sector, pivot)
                     refreshLevelView()
                   }
                 case _ =>
-                  new Alert(AlertType.Warning) {
-                    title = "Invalid Isometry"
-                    contentText = "Please select a valid isometry."
-                  }.showAndWait()
+
+                  val savedIsometry = NamedIsometryRegistry.getIsometry(isometryComboBox.value.value)
+                  savedIsometry match {
+                    case Some(iso) =>
+                      levelState = controller.applyIsometryToSector(levelState, iso, sector, pivot)
+                      refreshLevelView()
+                    case None =>
+                      new Alert(AlertType.Warning) {
+                        title = "Invalid Isometry"
+                        contentText = "Please select a valid isometry."
+                      }.showAndWait()
+                  }
               }
             } else {
               new Alert(AlertType.Warning) {
@@ -902,13 +1060,13 @@ object MinesweeperApp extends JFXApp3 {
                 if (expanding) {
                   new Reflection("vertical", None) with ExpandingIsometry with TransparentIsometry
                 } else {
-                  new Reflection("vertical", None) with TransparentIsometry
+                  new Reflection("horizontal", None) with TransparentIsometry
                 }
               } else {
                 if (expanding) {
                   new Reflection("vertical", None) with ExpandingIsometry
                 } else {
-                  new Reflection("vertical", None)
+                  new Reflection("horizontal", None)
                 }
               }
               levelState = controller.applyIsometry(levelState, reflection)
@@ -988,16 +1146,25 @@ object MinesweeperApp extends JFXApp3 {
               levelState = controller.applyIsometry(levelState, translation)
               refreshLevelView()
             case "Compose Isometries" =>
-              val composedIsometry = composeIsometries()
-              composedIsometry.foreach { iso =>
-                levelState = controller.applyIsometry(levelState, iso)
+
+              val composedIsometry = composeIsometries(expandingCheckbox, transparentCheckbox)
+              composedIsometry.foreach { newIso =>
+                levelState = controller.applyIsometry(levelState, newIso)
                 refreshLevelView()
               }
             case _ =>
-              new Alert(AlertType.Warning) {
-                title = "Invalid Isometry"
-                contentText = "Please select a valid isometry."
-              }.showAndWait()
+
+              val savedIsometry = NamedIsometryRegistry.getIsometry(isometryComboBox.value.value)
+              savedIsometry match {
+                case Some(iso) =>
+                  levelState = controller.applyIsometry(levelState, iso)
+                  refreshLevelView()
+                case None =>
+                  new Alert(AlertType.Warning) {
+                    title = "Invalid Isometry"
+                    contentText = "Please select a valid isometry."
+                  }.showAndWait()
+              }
           }
         }
       }
@@ -1011,16 +1178,28 @@ object MinesweeperApp extends JFXApp3 {
         optionsComboBox,
         actionButton,
         isometryComboBox,
-                  useSectorCheckbox,
-          sectorLabel,
-          sectorGrid,
-          pivotLabel,
-          pivotGrid,
-          optionsGrid,
-          applyIsometryButton,
-        saveButton
+        useSectorCheckbox,
+        sectorLabel,
+        sectorGrid,
+        pivotLabel,
+        pivotGrid,
+        optionsGrid,
+        applyIsometryButton,
+        saveButton,
+        new HBox {
+          spacing = 10
+          alignment = Pos.Center
+          children = Seq(
+            new Button("Save Composed Isometry") {
+              onAction = _ => saveComposedIsometry(expandingCheckbox, transparentCheckbox, isometryComboBox)
+            }
+          )
+        }
       )
     }
+
+
+    updateIsometryOptions()
   }
 
   private def promptForInt(message: String): Int = {
@@ -1049,13 +1228,9 @@ object MinesweeperApp extends JFXApp3 {
     val result = resultDialog.showAndWait()
     result match {
       case Some(ButtonType.OK) => dialog.value.value
-      case _                   => "Normal"
+      case _ => "Normal"
     }
   }
-
-
-     
-
 
 
   private def showResults(): Unit = {
@@ -1080,6 +1255,32 @@ object MinesweeperApp extends JFXApp3 {
   def updateResults(playerName: String, score: Long): Unit = {
     bestResults += ((playerName, score))
     bestResults.sortBy(-_._2)
+  }
+
+
+  private def saveComposedIsometry(expandingCheckbox: CheckBox, transparentCheckbox: CheckBox, isometryComboBox: ComboBox[String]): Unit = {
+    val dialog = new TextInputDialog(defaultValue = "my_composition") {
+      title = "Save Composed Isometry"
+      headerText = "Enter a name for the composed isometry"
+      contentText = "This will save the currently composed isometry with the given name"
+    }
+
+    dialog.showAndWait().foreach { name =>
+      val composedIsometry = composeIsometries(expandingCheckbox, transparentCheckbox)
+      composedIsometry.foreach { iso =>
+        NamedIsometryRegistry.saveIsometry(name, iso)
+
+        if (!MinesweeperApp.isometryOptions.contains(name)) {
+          MinesweeperApp.isometryOptions = MinesweeperApp.isometryOptions :+ name
+          isometryComboBox.items = ObservableBuffer(MinesweeperApp.isometryOptions: _*)
+        }
+
+        new Alert(AlertType.Information) {
+          title = "Saved"
+          headerText = s"Composed isometry '$name' saved successfully"
+        }.showAndWait()
+      }
+    }
   }
 
   private def saveGame(controller: GameController): Unit = {
