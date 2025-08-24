@@ -406,10 +406,17 @@ object MinesweeperApp extends JFXApp3 {
       prefWidth = 50
       disable = true
     }
+    val reflectionPositionField = new TextField {
+      text = "0"
+      promptText = "Axis Position"
+      prefWidth = 80
+      disable = true
+    }
     reflectionCheckbox.onAction = _ => {
       val enabled = reflectionCheckbox.isSelected
       reflectionOptions.disable = !enabled
       reflectionCountField.disable = !enabled
+      reflectionPositionField.disable = !enabled
     }
 
     val translationXField = new TextField {
@@ -444,7 +451,7 @@ object MinesweeperApp extends JFXApp3 {
 
     val reflectionLayout = new HBox {
       spacing = 10
-      children = Seq(reflectionCheckbox, reflectionOptions, new Label("Count:"), reflectionCountField)
+      children = Seq(reflectionCheckbox, reflectionOptions, new Label("Position:"), reflectionPositionField, new Label("Count:"), reflectionCountField)
     }
 
     val translationLayout = new HBox {
@@ -509,17 +516,18 @@ object MinesweeperApp extends JFXApp3 {
           case "Diagonal (Secondary)" => "diagonal-secondary"
           case _ => "horizontal"
         }
+        val position = Try(reflectionPositionField.text.value.toInt).getOrElse(0)
         val reflection = if (transparent) {
           if (expanding) {
-            new Reflection(axis, None) with ExpandingIsometry with TransparentIsometry
+            new Reflection(axis, Some(position)) with ExpandingIsometry with TransparentIsometry
           } else {
-            new Reflection(axis, None) with TransparentIsometry
+            new Reflection(axis, Some(position)) with TransparentIsometry
           }
         } else {
           if (expanding) {
-            new Reflection(axis, None) with ExpandingIsometry
+            new Reflection(axis, Some(position)) with ExpandingIsometry
           } else {
-            new Reflection(axis, None)
+            new Reflection(axis, Some(position))
           }
         }
         val count = Try(reflectionCountField.text.value.toInt).getOrElse(1)
@@ -779,12 +787,19 @@ object MinesweeperApp extends JFXApp3 {
 
     val expandingCheckbox = new CheckBox("Expanding")
     val transparentCheckbox = new CheckBox("Transparent")
+    val reflectionPositionField = new TextField {
+      text = "0"
+      promptText = "Axis Position"
+      prefWidth = 80
+    }
 
     val optionsGrid = new GridPane {
       hgap = 5
       vgap = 5
       add(expandingCheckbox, 0, 0)
       add(transparentCheckbox, 1, 0)
+      add(new Label("Reflection Position:"), 0, 1)
+      add(reflectionPositionField, 1, 1)
     }
 
     def updateIsometryOptions(): Unit = {
@@ -856,17 +871,18 @@ object MinesweeperApp extends JFXApp3 {
                 case "Reflect Horizontally" =>
                   val expanding = expandingCheckbox.isSelected
                   val transparent = transparentCheckbox.isSelected
+                  val position = Try(reflectionPositionField.text.value.toInt).getOrElse(0)
                   val reflection = if (transparent) {
                     if (expanding) {
-                      new Reflection("horizontal", None) with ExpandingIsometry with TransparentIsometry
+                      new Reflection("horizontal", Some(position)) with ExpandingIsometry with TransparentIsometry
                     } else {
-                      new Reflection("horizontal", None) with TransparentIsometry
+                      new Reflection("horizontal", Some(position)) with TransparentIsometry
                     }
                   } else {
                     if (expanding) {
-                      new Reflection("horizontal", None) with ExpandingIsometry
+                      new Reflection("horizontal", Some(position)) with ExpandingIsometry
                     } else {
-                      new Reflection("horizontal", None)
+                      new Reflection("horizontal", Some(position))
                     }
                   }
                   levelState = controller.applyIsometryToSector(levelState, reflection, sector, pivot)
@@ -874,17 +890,18 @@ object MinesweeperApp extends JFXApp3 {
                 case "Reflect Vertically" =>
                   val expanding = expandingCheckbox.isSelected
                   val transparent = transparentCheckbox.isSelected
+                  val position = Try(reflectionPositionField.text.value.toInt).getOrElse(0)
                   val reflection = if (transparent) {
                     if (expanding) {
-                      new Reflection("vertical", None) with ExpandingIsometry with TransparentIsometry
+                      new Reflection("vertical", Some(position)) with ExpandingIsometry with TransparentIsometry
                     } else {
-                      new Reflection("vertical", None) with TransparentIsometry
+                      new Reflection("vertical", Some(position)) with TransparentIsometry
                     }
                   } else {
                     if (expanding) {
-                      new Reflection("vertical", None) with ExpandingIsometry
+                      new Reflection("vertical", Some(position)) with ExpandingIsometry
                     } else {
-                      new Reflection("vertical", None)
+                      new Reflection("vertical", Some(position))
                     }
                   }
                   levelState = controller.applyIsometryToSector(levelState, reflection, sector, pivot)
@@ -892,17 +909,18 @@ object MinesweeperApp extends JFXApp3 {
                 case "Reflect Diagonal (Main)" =>
                   val expanding = expandingCheckbox.isSelected
                   val transparent = transparentCheckbox.isSelected
+                  val position = Try(reflectionPositionField.text.value.toInt).getOrElse(0)
                   val reflection = if (transparent) {
                     if (expanding) {
-                      new Reflection("diagonal-main", None) with ExpandingIsometry with TransparentIsometry
+                      new Reflection("diagonal-main", Some(position)) with ExpandingIsometry with TransparentIsometry
                     } else {
-                      new Reflection("diagonal-main", None) with TransparentIsometry
+                      new Reflection("diagonal-main", Some(position)) with TransparentIsometry
                     }
                   } else {
                     if (expanding) {
-                      new Reflection("diagonal-main", None) with ExpandingIsometry
+                      new Reflection("diagonal-main", Some(position)) with ExpandingIsometry
                     } else {
-                      new Reflection("diagonal-main", None)
+                      new Reflection("diagonal-main", Some(position))
                     }
                   }
                   levelState = controller.applyIsometryToSector(levelState, reflection, sector, pivot)
@@ -910,17 +928,18 @@ object MinesweeperApp extends JFXApp3 {
                 case "Reflect Diagonal (Secondary)" =>
                   val expanding = expandingCheckbox.isSelected
                   val transparent = transparentCheckbox.isSelected
+                  val position = Try(reflectionPositionField.text.value.toInt).getOrElse(0)
                   val reflection = if (transparent) {
                     if (expanding) {
-                      new Reflection("diagonal-secondary", None) with ExpandingIsometry with TransparentIsometry
+                      new Reflection("diagonal-secondary", Some(position)) with ExpandingIsometry with TransparentIsometry
                     } else {
-                      new Reflection("diagonal-secondary", None) with TransparentIsometry
+                      new Reflection("diagonal-secondary", Some(position)) with TransparentIsometry
                     }
                   } else {
                     if (expanding) {
-                      new Reflection("diagonal-secondary", None) with ExpandingIsometry
+                      new Reflection("diagonal-secondary", Some(position)) with ExpandingIsometry
                     } else {
-                      new Reflection("diagonal-secondary", None)
+                      new Reflection("diagonal-secondary", Some(position))
                     }
                   }
                   levelState = controller.applyIsometryToSector(levelState, reflection, sector, pivot)
@@ -1038,17 +1057,18 @@ object MinesweeperApp extends JFXApp3 {
             case "Reflect Horizontally" =>
               val expanding = expandingCheckbox.isSelected
               val transparent = transparentCheckbox.isSelected
+              val position = Try(reflectionPositionField.text.value.toInt).getOrElse(0)
               val reflection = if (transparent) {
                 if (expanding) {
-                  new Reflection("horizontal", None) with ExpandingIsometry with TransparentIsometry
+                  new Reflection("horizontal", Some(position)) with ExpandingIsometry with TransparentIsometry
                 } else {
-                  new Reflection("horizontal", None) with TransparentIsometry
+                  new Reflection("horizontal", Some(position)) with TransparentIsometry
                 }
               } else {
                 if (expanding) {
-                  new Reflection("horizontal", None) with ExpandingIsometry
+                  new Reflection("horizontal", Some(position)) with ExpandingIsometry
                 } else {
-                  new Reflection("horizontal", None)
+                  new Reflection("horizontal", Some(position))
                 }
               }
               levelState = controller.applyIsometry(levelState, reflection)
@@ -1056,17 +1076,18 @@ object MinesweeperApp extends JFXApp3 {
             case "Reflect Vertically" =>
               val expanding = expandingCheckbox.isSelected
               val transparent = transparentCheckbox.isSelected
+              val position = Try(reflectionPositionField.text.value.toInt).getOrElse(0)
               val reflection = if (transparent) {
                 if (expanding) {
-                  new Reflection("vertical", None) with ExpandingIsometry with TransparentIsometry
+                  new Reflection("vertical", Some(position)) with ExpandingIsometry with TransparentIsometry
                 } else {
-                  new Reflection("vertical", None) with TransparentIsometry
+                  new Reflection("vertical", Some(position)) with TransparentIsometry
                 }
               } else {
                 if (expanding) {
-                  new Reflection("vertical", None) with ExpandingIsometry
+                  new Reflection("vertical", Some(position)) with ExpandingIsometry
                 } else {
-                  new Reflection("vertical", None)
+                  new Reflection("vertical", Some(position))
                 }
               }
               levelState = controller.applyIsometry(levelState, reflection)
@@ -1074,17 +1095,18 @@ object MinesweeperApp extends JFXApp3 {
             case "Reflect Diagonal (Main)" =>
               val expanding = expandingCheckbox.isSelected
               val transparent = transparentCheckbox.isSelected
+              val position = Try(reflectionPositionField.text.value.toInt).getOrElse(0)
               val reflection = if (transparent) {
                 if (expanding) {
-                  new Reflection("diagonal-main", None) with ExpandingIsometry with TransparentIsometry
+                  new Reflection("diagonal-main", Some(position)) with ExpandingIsometry with TransparentIsometry
                 } else {
-                  new Reflection("diagonal-main", None) with TransparentIsometry
+                  new Reflection("diagonal-main", Some(position)) with TransparentIsometry
                 }
               } else {
                 if (expanding) {
-                  new Reflection("diagonal-main", None) with ExpandingIsometry
+                  new Reflection("diagonal-main", Some(position)) with ExpandingIsometry
                 } else {
-                  new Reflection("diagonal-main", None)
+                  new Reflection("diagonal-main", Some(position))
                 }
               }
               levelState = controller.applyIsometry(levelState, reflection)
@@ -1092,17 +1114,18 @@ object MinesweeperApp extends JFXApp3 {
             case "Reflect Diagonal (Secondary)" =>
               val expanding = expandingCheckbox.isSelected
               val transparent = transparentCheckbox.isSelected
+              val position = Try(reflectionPositionField.text.value.toInt).getOrElse(0)
               val reflection = if (transparent) {
                 if (expanding) {
-                  new Reflection("diagonal-secondary", None) with ExpandingIsometry with TransparentIsometry
+                  new Reflection("diagonal-secondary", Some(position)) with ExpandingIsometry with TransparentIsometry
                 } else {
-                  new Reflection("diagonal-secondary", None) with TransparentIsometry
+                  new Reflection("diagonal-secondary", Some(position)) with TransparentIsometry
                 }
               } else {
                 if (expanding) {
-                  new Reflection("diagonal-secondary", None) with ExpandingIsometry
+                  new Reflection("diagonal-secondary", Some(position)) with ExpandingIsometry
                 } else {
-                  new Reflection("diagonal-secondary", None)
+                  new Reflection("diagonal-secondary", Some(position))
                 }
               }
               levelState = controller.applyIsometry(levelState, reflection)
