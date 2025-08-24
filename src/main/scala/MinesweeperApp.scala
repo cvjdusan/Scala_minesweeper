@@ -878,13 +878,13 @@ object MinesweeperApp extends JFXApp3 {
                     if (expanding) {
                       new Reflection("vertical", None) with ExpandingIsometry with TransparentIsometry
                     } else {
-                      new Reflection("horizontal", None) with TransparentIsometry
+                      new Reflection("vertical", None) with TransparentIsometry
                     }
                   } else {
                     if (expanding) {
                       new Reflection("vertical", None) with ExpandingIsometry
                     } else {
-                      new Reflection("horizontal", None)
+                      new Reflection("vertical", None)
                     }
                   }
                   levelState = controller.applyIsometryToSector(levelState, reflection, sector, pivot)
@@ -1060,13 +1060,13 @@ object MinesweeperApp extends JFXApp3 {
                 if (expanding) {
                   new Reflection("vertical", None) with ExpandingIsometry with TransparentIsometry
                 } else {
-                  new Reflection("horizontal", None) with TransparentIsometry
+                  new Reflection("vertical", None) with TransparentIsometry
                 }
               } else {
                 if (expanding) {
                   new Reflection("vertical", None) with ExpandingIsometry
                 } else {
-                  new Reflection("horizontal", None)
+                  new Reflection("vertical", None)
                 }
               }
               levelState = controller.applyIsometry(levelState, reflection)
