@@ -161,7 +161,7 @@ class IsometriesTest extends AnyFunSuite with Matchers {
 
   test("TransparentIsometry trait - transparent overlay") {
     val transparentRotation = new Rotation(clockwise = true) with TransparentIsometry
-    val sector = Sector(0, 0, 1, 1) // 2x2 sektor
+    val sector = Sector(0, 0, 2, 2) // 2x2 sektor
     val pivot = (1, 1) // pivot na centru
     val grid = Vector(
       Vector(GameCell(true), GameCell(false), GameCell(false)),
@@ -174,8 +174,6 @@ class IsometriesTest extends AnyFunSuite with Matchers {
     result.length shouldBe 3
     result.head.length shouldBe 3
 
-    // Proveri da li se transparent overlay primenio
-    // Mina sa (0,0) treba da se rotira na (0,2), ali originalna mina sa (0,0) treba da ostane
     result(0)(0).isMine shouldBe true // originalna mina ostaje
     result(0)(2).isMine shouldBe true // rotirana mina se dodaje
   }
@@ -336,17 +334,38 @@ class IsometriesTest extends AnyFunSuite with Matchers {
 
   }
 
-  //
-  //    test("Translation inverse – povratak na isto stanje (ceo grid)") {
-  //      val t = new Translation(1, 2) // dx=+1, dy=+2
-  //      val inv = t.inverse           // dx=-1, dy=-2
-  //      val grid = createTestGrid
-  //
-  //      val fwd = t.apply(grid)
-  //      val back = inv.apply(fwd)
-  //
-  //      back should equal (grid)
-  //    }
+  // inverse
+
+  test("Rotation inverse") {
+    val t = new Rotation()
+    val inv = t.inverse
+    val grid = createTestGrid
+
+    val fwd = t.apply(grid)
+    val back = inv.apply(fwd)
+
+    back should equal(grid)
+  }
+
+  test("clearOriginalNotInImage should clear mines not mapped into image") {
+    val rotation = new Rotation(clockwise = true) with TransparentIsometry
+    val sector = Sector(0, 0, 1, 1) // 2x2
+    val pivot = (1, 1) // pivot u centru
+
+    val grid = Vector(
+      Vector(GameCell(isMine = true),  GameCell(isMine = false), GameCell(isMine = false)),
+      Vector(GameCell(isMine = false), GameCell(isMine = false), GameCell(isMine = false)),
+      Vector(GameCell(isMine = false), GameCell(isMine = false), GameCell(isMine = false))
+    )
+
+    val result = rotation.applyToSector(grid, sector, pivot)
+
+    // Mina na (0,0) se rotira u (0,2), sto je van sektora (0..1,0..1).
+    result(0)(0).isMine shouldBe false
+    // a slika se upisuje u (0,2), pa tamo treba da se pojavi mina
+    result(0)(2).isMine shouldBe true
+  }
+
 
 
 }
