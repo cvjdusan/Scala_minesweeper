@@ -119,7 +119,7 @@ object GameLogic {
     if (state.levelCompleted) None
     else {
       val duration = java.time.Duration.between(state.startTime, java.time.Instant.now()).toSeconds
-      val timePenalty = duration * 2
+      val timePenalty = duration
       val clickPenalty = state.clickCount * 10
 
       val baseScore = if (isGameOver) 0L else state.score

@@ -201,7 +201,7 @@ class GameLogicTest extends AnyFunSuite with Matchers {
     initialScore shouldBe 1000
     duration shouldBe 30
     clicks shouldBe 5
-    finalScore shouldBe (1000 - 30 * 2 - 5 * 10).max(0) // 1000 - 60 - 50 = 890
+    finalScore shouldBe (1000 - 30 - 5 * 10).max(0)
   }
 
   test("GameLogic should not return negative final score") {
