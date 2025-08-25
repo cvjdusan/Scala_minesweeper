@@ -377,6 +377,7 @@ object MinesweeperApp extends JFXApp3 {
     val reflectionCheckbox = new CheckBox("Reflection")
     val centralCheckbox = new CheckBox("Central Symmetry")
     val translationCheckbox = new CheckBox("Translation")
+    val savedIsometriesCheckbox = new CheckBox("Use Saved Isometries")
 
     val rotationOptions = new ComboBox[String] {
       items = ObservableBuffer("Clockwise", "Counterclockwise")
@@ -444,6 +445,24 @@ object MinesweeperApp extends JFXApp3 {
       translationCountField.disable = !enabled
     }
 
+    val savedIsometriesComboBox = new ComboBox[String] {
+      items = ObservableBuffer(NamedIsometryRegistry.getAllNames: _*)
+      promptText = "Select saved isometry"
+      disable = true
+    }
+    val savedIsometriesCountField = new TextField {
+      text = "1"
+      promptText = "Count"
+      prefWidth = 50
+      disable = true
+    }
+    
+    savedIsometriesCheckbox.onAction = _ => {
+      val enabled = savedIsometriesCheckbox.isSelected
+      savedIsometriesComboBox.disable = !enabled
+      savedIsometriesCountField.disable = !enabled
+    }
+
     val rotationLayout = new HBox {
       spacing = 10
       children = Seq(rotationCheckbox, rotationOptions, new Label("Count:"), rotationCountField)
@@ -467,13 +486,24 @@ object MinesweeperApp extends JFXApp3 {
       )
     }
 
+    val savedIsometriesLayout = new HBox {
+      spacing = 10
+      children = Seq(
+        savedIsometriesCheckbox,
+        savedIsometriesComboBox,
+        new Label("Count:"),
+        savedIsometriesCountField
+      )
+    }
+
     val optionsLayout = new VBox {
       spacing = 10
       children = Seq(
         rotationLayout,
         reflectionLayout,
         centralCheckbox,
-        translationLayout
+        translationLayout,
+        savedIsometriesLayout
       )
     }
 
@@ -577,6 +607,27 @@ object MinesweeperApp extends JFXApp3 {
           }
         }
         isometries += translation
+      }
+
+      if (savedIsometriesCheckbox.isSelected) {
+        val savedIsometryName = savedIsometriesComboBox.value.value
+        if (savedIsometryName != null) {
+          val savedIsometry = NamedIsometryRegistry.getIsometry(savedIsometryName)
+          savedIsometry match {
+            case Some(iso) =>
+              val count = Try(savedIsometriesCountField.text.value.toInt).getOrElse(1)
+              for (_ <- 1 to count) {
+                isometries += iso
+              }
+            case None =>
+
+              new Alert(AlertType.Error) {
+                title = "Error"
+                headerText = "Saved isometry not found"
+                contentText = s"Could not find saved isometry: $savedIsometryName"
+              }.showAndWait()
+          }
+        }
       }
 
       val result = isometries.result()
